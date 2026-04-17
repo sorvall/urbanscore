@@ -1,0 +1,77 @@
+spring:
+  application:
+    name: eco-rating-service
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/eco_rating}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: ${REDIS_TIMEOUT:3s}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.spatial.dialect.postgis.PostgisPG10Dialect
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  cache:
+    type: redis
+
+cache:
+  ttl:
+    aqicn: ${CACHE_TTL_AQICN:15m}
+    overpass: ${CACHE_TTL_OVERPASS:6h}
+
+external:
+  aqicn:
+    base-url: ${AQICN_BASE_URL:https://api.waqi.info}
+    api-key: ${AQICN_API_KEY:}
+  overpass:
+    base-url: ${OVERPASS_BASE_URL:https://overpass-api.de/api/interpreter}
+  mos-data:
+    base-url: ${MOS_DATA_BASE_URL:https://apidata.mos.ru}
+    api-key: ${MOS_DATA_API_KEY:}
+    # Числовой идентификатор набора на data.mos.ru (вкладка API карточки набора), например Wi‑Fi в культурных центрах.
+    wifi-dataset-id: ${MOS_DATA_WIFI_DATASET_ID:2756}
+    # Справочник кинотеатров (подведомственных Департаменту культуры): data.mos.ru / opendata/495
+    cinema-dataset-id: ${MOS_DATA_CINEMA_DATASET_ID:495}
+    # Работы по благоустройству жилой застройки — data.mos.ru / opendata/62961 (без geo в API; геокодинг Nominatim)
+    landscaping-dataset-id: ${MOS_DATA_LANDSCAPING_DATASET_ID:62961}
+    # OData $filter Cells/YearOfWork ge N — ограничиваем объём выборки
+    landscaping-min-year: ${MOS_DATA_LANDSCAPING_MIN_YEAR:2024}
+    # Максимум строк из API после фильтра (пагинация по 500); геокодинг ~1 с/уник. адрес — не завышайте без нужды
+    landscaping-max-rows: ${MOS_DATA_LANDSCAPING_MAX_ROWS:1500}
+    # Локальные JSON-снимки: сырые строки и готовые точки (после геокодинга) — повторные запуски без API/Nominatim
+    landscaping-snapshot-enabled: ${MOS_DATA_LANDSCAPING_SNAPSHOT_ENABLED:true}
+    landscaping-snapshot-directory: ${MOS_DATA_LANDSCAPING_SNAPSHOT_DIR:./data/mos-landscaping-snapshots}
+
+  nominatim:
+    base-url: ${NOMINATIM_BASE_URL:https://nominatim.openstreetmap.org}
+    # Геокодирование адреса, если в ответе API нет координат (набор 495 отдаёт только атрибуты)
+    enabled: ${NOMINATIM_ENABLED:true}
+
+app:
+  cors:
+    allowed-origins: ${APP_CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+  debug:
+    # GET /api/v1/debug/warmup-status — статус прогрева благоустройства (для отладки UI)
+    warmup-status-enabled: ${DEBUG_WARMUP_STATUS_ENABLED:true}
+
+logging:
+  level:
+    root: INFO
+    com.ecorating: INFO

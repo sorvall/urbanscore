@@ -11,7 +11,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Статус прогрева тяжёлых кэшей (благоустройство 62961). Выключается в проде через {@code app.debug.warmup-status-enabled=false}.
+ * Статус прогрева/импорта: благоустройство (62961), импорт промышленности (2601). Выключается в проде через
+ * {@code app.debug.warmup-status-enabled=false}.
  */
 @RestController
 @RequestMapping("/api/v1/debug")

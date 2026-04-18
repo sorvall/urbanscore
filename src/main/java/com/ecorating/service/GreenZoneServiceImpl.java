@@ -74,7 +74,8 @@ public class GreenZoneServiceImpl implements GreenZoneService {
                 .map(zone -> new NearbyObjectDto(
                         zone.getName(),
                         zone.getZoneType().name(),
-                        haversineDistanceMeters(lat, lon, zone.getLocation().getY(), zone.getLocation().getX())
+                        haversineDistanceMeters(lat, lon, zone.getLocation().getY(), zone.getLocation().getX()),
+                        null
                 ))
                 .sorted(Comparator.comparingDouble(NearbyObjectDto::distanceMeters))
                 .limit(5)

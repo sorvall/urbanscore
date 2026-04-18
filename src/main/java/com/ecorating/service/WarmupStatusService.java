@@ -1,5 +1,6 @@
 package com.ecorating.service;
 
+import com.ecorating.dto.response.IndustryWarmupStatusDto;
 import com.ecorating.dto.response.LandscapingWarmupStatusDto;
 import com.ecorating.dto.response.WarmupStatusResponse;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,6 +11,7 @@ public class WarmupStatusService {
 
     private final MoscowLandscapingRowsCache moscowLandscapingRowsCache;
     private final MoscowLandscapingSnapshotStore snapshotStore;
+    private final MoscowIndustryHazardImportStatus industryHazardImportStatus;
     private final int landscapingDatasetId;
     private final int landscapingMinYear;
     private final int landscapingMaxRows;
@@ -18,13 +20,15 @@ public class WarmupStatusService {
     public WarmupStatusService(
             MoscowLandscapingRowsCache moscowLandscapingRowsCache,
             MoscowLandscapingSnapshotStore snapshotStore,
-            @Value("${external.mos-data.landscaping-dataset-id:62961}") int landscapingDatasetId,
+            MoscowIndustryHazardImportStatus industryHazardImportStatus,
+            @Value("${external.mos-data.landscaping-dataset-id:0}") int landscapingDatasetId,
             @Value("${external.mos-data.landscaping-min-year:2024}") int landscapingMinYear,
             @Value("${external.mos-data.landscaping-max-rows:4000}") int landscapingMaxRows,
             @Value("${external.mos-data.landscaping-snapshot-enabled:true}") boolean snapshotEnabled
     ) {
         this.moscowLandscapingRowsCache = moscowLandscapingRowsCache;
         this.snapshotStore = snapshotStore;
+        this.industryHazardImportStatus = industryHazardImportStatus;
         this.landscapingDatasetId = landscapingDatasetId;
         this.landscapingMinYear = landscapingMinYear;
         this.landscapingMaxRows = landscapingMaxRows;
@@ -58,6 +62,15 @@ public class WarmupStatusService {
                 points,
                 summary
         );
-        return new WarmupStatusResponse(landscaping);
+
+        IndustryWarmupStatusDto industry = new IndustryWarmupStatusDto(
+                industryHazardImportStatus.isImportEnabledConfigured(),
+                industryHazardImportStatus.getDatasetId(),
+                industryHazardImportStatus.isImportInProgress(),
+                industryHazardImportStatus.getRecordsImported(),
+                industryHazardImportStatus.getApiRowsFetched(),
+                industryHazardImportStatus.getSummary()
+        );
+        return new WarmupStatusResponse(landscaping, industry);
     }
 }

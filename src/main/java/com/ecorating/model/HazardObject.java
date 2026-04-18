@@ -47,6 +47,10 @@ public class HazardObject {
     @Column(nullable = false, length = 100)
     private String source;
 
+    /** global_id строки data.mos.ru — для повторного импорта без дублей. */
+    @Column(name = "source_global_id")
+    private Long sourceGlobalId;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -59,11 +63,23 @@ public class HazardObject {
     }
 
     public HazardObject(String name, HazardType hazardType, Point location, String description, String source) {
+        this(name, hazardType, location, description, source, null);
+    }
+
+    public HazardObject(
+            String name,
+            HazardType hazardType,
+            Point location,
+            String description,
+            String source,
+            Long sourceGlobalId
+    ) {
         this.name = name;
         this.hazardType = hazardType;
         this.location = location;
         this.description = description;
         this.source = source;
+        this.sourceGlobalId = sourceGlobalId;
     }
 
     public Long getId() {
@@ -88,6 +104,10 @@ public class HazardObject {
 
     public String getSource() {
         return source;
+    }
+
+    public Long getSourceGlobalId() {
+        return sourceGlobalId;
     }
 
     public LocalDateTime getCreatedAt() {

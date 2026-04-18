@@ -57,6 +57,17 @@ function getScoreLabel(score) {
   return { text: 'Низко', tone: 'bad' };
 }
 
+function hazardTypeLabelRu(type) {
+  if (!type) return '';
+  const map = {
+    FACTORY: 'Промышленность',
+    TPP: 'ТЭЦ',
+    LANDFILL: 'Объекты обращения с отходами',
+    INCINERATOR: 'Сжигание отходов'
+  };
+  return map[type] || type;
+}
+
 export default function App() {
   const [selectedPoint, setSelectedPoint] = useState(null);
   const [report, setReport] = useState(null);
@@ -277,7 +288,7 @@ export default function App() {
         {loading && <p className="hint">Загружаю данные...</p>}
         {SHOW_WARMUP_DEBUG && warmupStatus?.landscaping && (
           <div className="warmup-debug" role="status" aria-live="polite">
-            <div className="warmup-debug-title">Прогрев кэша (отладка)</div>
+            <div className="warmup-debug-title">Благоустройство — прогрев кэша (отладка)</div>
             <p className="warmup-debug-summary">{warmupStatus.landscaping.summary}</p>
             <ul className="warmup-debug-list">
               <li>
@@ -291,6 +302,38 @@ export default function App() {
               <li>
                 <span>Снимок точек (геокод)</span>
                 <strong>{warmupStatus.landscaping.points_snapshot_present ? 'есть' : 'нет'}</strong>
+              </li>
+            </ul>
+          </div>
+        )}
+        {SHOW_WARMUP_DEBUG && warmupStatus?.industry && (
+          <div className="warmup-debug warmup-debug-industry" role="status" aria-live="polite">
+            <div className="warmup-debug-title">Промышленность (набор {warmupStatus.industry.dataset_id}) — импорт</div>
+            <p className="warmup-debug-summary">{warmupStatus.industry.summary}</p>
+            <ul className="warmup-debug-list">
+              <li>
+                <span>Импорт включён</span>
+                <strong>{warmupStatus.industry.import_enabled ? 'да' : 'нет'}</strong>
+              </li>
+              <li>
+                <span>Сейчас выполняется</span>
+                <strong>{warmupStatus.industry.import_in_progress ? 'да' : 'нет'}</strong>
+              </li>
+              <li>
+                <span>Записей сохранено в БД</span>
+                <strong>
+                  {warmupStatus.industry.records_imported != null
+                    ? warmupStatus.industry.records_imported
+                    : '—'}
+                </strong>
+              </li>
+              <li>
+                <span>Строк из API</span>
+                <strong>
+                  {warmupStatus.industry.api_rows_fetched != null
+                    ? warmupStatus.industry.api_rows_fetched
+                    : '—'}
+                </strong>
               </li>
             </ul>
           </div>
@@ -384,18 +427,40 @@ export default function App() {
               </>
             )}
 
-            <h3>Ближайшие источники риска</h3>
+            <h3>Ближайшие источники риска (справочник 2601)</h3>
+            <p className="aqicn-hint">
+              Индекс риска считается по всем объектам в радиусе поиска; здесь показываются до{' '}
+              <strong>трёх</strong> ближайших записей из открытого справочника промышленности Москвы (набор 2601,
+              data.mos.ru) — после импорта на бэкенде.
+            </p>
+            <details className="hazard-import-details">
+              <summary>Настройка импорта справочника (2601, data.mos.ru)</summary>
+              <div className="hazard-import-details-body">
+                Включите на сервере переменные{' '}
+                <code className="hint-code">MOS_DATA_INDUSTRY_IMPORT_ENABLED=true</code> и{' '}
+                <code className="hint-code">MOS_DATA_API_KEY</code>. Первый импорт может занять много времени
+                (геокодирование адресов).
+              </div>
+            </details>
             {report.nearestHazards?.length ? (
               <ul className="item-list">
                 {report.nearestHazards.map((item, idx) => (
-                  <li key={`${item.name}-${idx}`}>
-                    <span>{item.name} ({item.type})</span>
-                    <strong>{item.distanceMeters.toFixed(0)} м</strong>
+                  <li key={`${item.name}-${idx}`} className="item-list-hazard">
+                    <div className="hazard-nearest-body">
+                      <span className="hazard-nearest-name">{item.name}</span>
+                      {item.description ? (
+                        <span className="hazard-nearest-desc">{item.description}</span>
+                      ) : null}
+                      <span className="hazard-nearest-type">{hazardTypeLabelRu(item.type)}</span>
+                    </div>
+                    <strong className="hazard-nearest-m">{item.distanceMeters.toFixed(0)} м</strong>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="hint">Рядом не найдено объектов риска.</p>
+              <p className="hint">
+                В радиусе нет записей справочника 2601 (нужен импорт) или точка далеко от промышленных объектов из набора.
+              </p>
             )}
 
             <h3>Ближайшие парки и леса</h3>
@@ -569,10 +634,10 @@ export default function App() {
               </div>
             ) : (
               <p className="hint">
-                Нет данных по благоустройству: нужен <code className="hint-code">MOS_DATA_API_KEY</code>, точка в Москве,
-                и загрузка набора 62961 (год не ниже заданного в{' '}
-                <code className="hint-code">MOS_DATA_LANDSCAPING_MIN_YEAR</code>). Первый запрос после деплоя может
-                занять много времени (геокодинг адресов).
+                Благоустройство по умолчанию выключено (долгий прогрев). Чтобы включить набор 62961, задайте на бэкенде{' '}
+                <code className="hint-code">MOS_DATA_LANDSCAPING_DATASET_ID=62961</code>, ключ{' '}
+                <code className="hint-code">MOS_DATA_API_KEY</code> и точку в Москве; первый запрос может быть долгим
+                (геокодинг).
               </p>
             )}
           </div>

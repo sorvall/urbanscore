@@ -49,8 +49,8 @@ external:
     wifi-dataset-id: ${MOS_DATA_WIFI_DATASET_ID:2756}
     # Справочник кинотеатров (подведомственных Департаменту культуры): data.mos.ru / opendata/495
     cinema-dataset-id: ${MOS_DATA_CINEMA_DATASET_ID:495}
-    # Работы по благоустройству жилой застройки — data.mos.ru / opendata/62961 (без geo в API; геокодинг Nominatim)
-    landscaping-dataset-id: ${MOS_DATA_LANDSCAPING_DATASET_ID:62961}
+    # Благоустройство (62961): долгий первый прогрев (API + Nominatim). 0 = отключено.
+    landscaping-dataset-id: ${MOS_DATA_LANDSCAPING_DATASET_ID:0}
     # OData $filter Cells/YearOfWork ge N — ограничиваем объём выборки
     landscaping-min-year: ${MOS_DATA_LANDSCAPING_MIN_YEAR:2024}
     # Максимум строк из API после фильтра (пагинация по 500); геокодинг ~1 с/уник. адрес — не завышайте без нужды
@@ -58,6 +58,10 @@ external:
     # Локальные JSON-снимки: сырые строки и готовые точки (после геокодинга) — повторные запуски без API/Nominatim
     landscaping-snapshot-enabled: ${MOS_DATA_LANDSCAPING_SNAPSHOT_ENABLED:true}
     landscaping-snapshot-directory: ${MOS_DATA_LANDSCAPING_SNAPSHOT_DIR:./data/mos-landscaping-snapshots}
+    # Промышленные предприятия (напр. data.mos.ru / opendata/2601) → hazard_objects; геокодинг Nominatim
+    industry-dataset-id: ${MOS_DATA_INDUSTRY_DATASET_ID:2601}
+    industry-import-enabled: ${MOS_DATA_INDUSTRY_IMPORT_ENABLED:false}
+    industry-max-rows: ${MOS_DATA_INDUSTRY_MAX_ROWS:2000}
 
   nominatim:
     base-url: ${NOMINATIM_BASE_URL:https://nominatim.openstreetmap.org}
@@ -68,7 +72,7 @@ app:
   cors:
     allowed-origins: ${APP_CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
   debug:
-    # GET /api/v1/debug/warmup-status — статус прогрева благоустройства (для отладки UI)
+    # GET /api/v1/debug/warmup-status — благоустройство + импорт промышленности (для отладки UI)
     warmup-status-enabled: ${DEBUG_WARMUP_STATUS_ENABLED:true}
 
 logging:

@@ -192,6 +192,15 @@ code.api-params-url {
   font-size: 0.85rem;
 }
 
+.warmup-debug-industry {
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.warmup-debug-industry .warmup-debug-title {
+  color: #92400e;
+}
+
 .warmup-debug-title {
   font-weight: 600;
   margin-bottom: 0.35rem;
@@ -328,6 +337,33 @@ code.api-params-url {
   border: 1px solid #e5e7eb;
 }
 
+.hazard-import-details {
+  margin: 0 0 12px;
+  font-size: 0.82rem;
+  color: #4b5563;
+}
+
+.hazard-import-details summary {
+  cursor: pointer;
+  list-style-position: outside;
+  padding: 4px 0;
+  color: #374151;
+  user-select: none;
+}
+
+.hazard-import-details summary::-webkit-details-marker {
+  color: #6b7280;
+}
+
+.hazard-import-details-body {
+  margin-top: 8px;
+  padding: 8px 10px;
+  line-height: 1.45;
+  background: #f9fafb;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+}
+
 .item-list {
   margin: 0;
   padding: 0;
@@ -346,6 +382,41 @@ code.api-params-url {
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   background: #fff;
+}
+
+.item-list li.item-list-hazard {
+  align-items: flex-start;
+}
+
+.hazard-nearest-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.hazard-nearest-name {
+  font-weight: 600;
+  color: #111827;
+  line-height: 1.35;
+}
+
+.hazard-nearest-desc {
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: #6b7280;
+}
+
+.hazard-nearest-type {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.hazard-nearest-m {
+  flex-shrink: 0;
+  align-self: flex-start;
+  padding-top: 2px;
 }
 
 .aqi-good {

@@ -8,6 +8,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface HazardObjectRepository extends JpaRepository<HazardObject, Long> {
 
+    void deleteAllBySource(String source);
+
     @Query(value = """
             SELECT *
             FROM hazard_objects h

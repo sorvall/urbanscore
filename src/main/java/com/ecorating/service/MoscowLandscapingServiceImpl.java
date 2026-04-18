@@ -29,7 +29,7 @@ public class MoscowLandscapingServiceImpl implements MoscowLandscapingService {
 
     public MoscowLandscapingServiceImpl(
             MoscowLandscapingRowsCache rowsCache,
-            @Value("${external.mos-data.landscaping-dataset-id:62961}") int landscapingDatasetId,
+            @Value("${external.mos-data.landscaping-dataset-id:0}") int landscapingDatasetId,
             @Value("${external.mos-data.landscaping-min-year:2024}") int landscapingMinYear,
             @Value("${external.mos-data.landscaping-max-rows:4000}") int landscapingMaxRows
     ) {

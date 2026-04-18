@@ -31,13 +31,15 @@ public class HazardServiceImpl implements HazardService {
         double hazardIndex = Math.max(0.0, Math.min(100.0, 100.0 - penalty));
 
         List<NearbyObjectDto> nearest = hazards.stream()
+                .filter(h -> MoscowIndustrialCatalogRow.SOURCE_DATASET_2601.equals(h.getSource()))
                 .map(hazard -> new NearbyObjectDto(
                         hazard.getName(),
                         hazard.getHazardType().name(),
-                        haversineDistanceMeters(lat, lon, hazard.getLocation().getY(), hazard.getLocation().getX())
+                        haversineDistanceMeters(lat, lon, hazard.getLocation().getY(), hazard.getLocation().getX()),
+                        hazard.getDescription()
                 ))
                 .sorted(Comparator.comparingDouble(NearbyObjectDto::distanceMeters))
-                .limit(10)
+                .limit(3)
                 .toList();
 
         LocalDateTime freshness = hazards.stream()

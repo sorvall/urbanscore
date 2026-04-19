@@ -19,7 +19,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: http://localhost:8080
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+        VITE_SITE_URL: ${VITE_SITE_URL:-http://localhost:5173}
     container_name: urbanscore-frontend
     depends_on:
       - app

@@ -343,6 +343,33 @@ body {
   line-height: 1.4;
 }
 
+.forming-hint--phrase {
+  margin: 12px 0 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #3d4f66;
+  line-height: 1.45;
+  min-height: 2.9em;
+  animation: formingPhraseIn 0.42s ease-out;
+}
+
+.forming-hint--sub {
+  margin-top: 8px;
+  font-size: 0.78rem;
+  color: #8b9bb0;
+}
+
+@keyframes formingPhraseIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .map-footer {
   padding: 12px 24px;
   font-size: 0.75rem;

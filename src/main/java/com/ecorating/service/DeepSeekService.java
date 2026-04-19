@@ -89,6 +89,10 @@ public class DeepSeekService {
         }
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("model", properties.model());
+        body.put("enable_search", properties.enableSearch());
+        if (properties.enableSearch() && StringUtils.hasText(properties.searchMode())) {
+            body.put("search_mode", properties.searchMode().trim());
+        }
         body.put(
                 "messages",
                 List.of(
@@ -96,6 +100,8 @@ public class DeepSeekService {
                         Map.of("role", "user", "content", userMessage)));
 
         try {
+            // Согласовано с HttpClient.responseTimeout в DeepSeekClientConfig; запас на сеть.
+            var wait = properties.responseTimeout().plusSeconds(15);
             String raw = deepSeekWebClient
                     .post()
                     .uri("/v1/chat/completions")
@@ -104,7 +110,7 @@ public class DeepSeekService {
                     .bodyValue(body)
                     .retrieve()
                     .bodyToMono(String.class)
-                    .block(properties.responseTimeout().plusSeconds(5));
+                    .block(wait);
 
             return extractAssistantHtml(raw);
         } catch (WebClientResponseException e) {
@@ -117,7 +123,13 @@ public class DeepSeekService {
             if (USER_ERROR_MESSAGE.equals(e.getMessage())) {
                 throw e;
             }
-            log.warn("DeepSeek ответ не обработан: {}", e.getMessage());
+            if (e.getMessage() != null && e.getMessage().contains("Timeout on blocking read")) {
+                log.warn(
+                        "DeepSeek: истекло время ожидания ответа (лимит ~{}). Увеличьте DEEPSEEK_RESPONSE_TIMEOUT в .env / application.yml.",
+                        properties.responseTimeout());
+            } else {
+                log.warn("DeepSeek ответ не обработан: {}", e.getMessage());
+            }
             throw new IllegalStateException(USER_ERROR_MESSAGE);
         } catch (Exception e) {
             log.warn("DeepSeek неожиданная ошибка", e);

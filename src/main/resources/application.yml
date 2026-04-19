@@ -23,10 +23,16 @@ deepseek:
   apiKey: ${DEEPSEEK_API_KEY:}
   model: ${DEEPSEEK_MODEL:deepseek-chat}
   connectTimeout: ${DEEPSEEK_CONNECT_TIMEOUT:15s}
-  responseTimeout: ${DEEPSEEK_RESPONSE_TIMEOUT:120s}
-  # Текст промпта — в файле prompts/deepseek-system-prompt.txt (редактируйте и пересоберите / перезапустите).
-  # Переопределить целиком: DEEPSEEK_SYSTEM_PROMPT. Другой файл: DEEPSEEK_SYSTEM_PROMPT_PATH=file:/abs/path/prompt.txt
+  # Длинные отчёты часто >2 мин; при «Timeout on blocking read» увеличьте значение.
+  responseTimeout: ${DEEPSEEK_RESPONSE_TIMEOUT:300s}
+  # Системный промпт — prompts/deepseek-system-prompt.txt. Переопределить: DEEPSEEK_SYSTEM_PROMPT или DEEPSEEK_SYSTEM_PROMPT_PATH
   systemPromptPath: ${DEEPSEEK_SYSTEM_PROMPT_PATH:classpath:prompts/deepseek-system-prompt.txt}
+  # Текст задания отчёта (user message) — prompts/deepseek-user-prompt.txt. Переопределить: DEEPSEEK_USER_PROMPT или DEEPSEEK_USER_PROMPT_PATH
+  userPromptPath: ${DEEPSEEK_USER_PROMPT_PATH:classpath:prompts/deepseek-user-prompt.txt}
+  # Веб-поиск в chat/completions (enable_search). Отключить: DEEPSEEK_ENABLE_SEARCH=false
+  enableSearch: ${DEEPSEEK_ENABLE_SEARCH:true}
+  # Режим «Умный поиск» (search_mode: smart). Не отправлять поле: DEEPSEEK_SEARCH_MODE= (пусто)
+  searchMode: ${DEEPSEEK_SEARCH_MODE:smart}
 
 app:
   cors:

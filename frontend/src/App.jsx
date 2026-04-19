@@ -1,17 +1,44 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { DEFAULT_EXPERT_PROMPT } from './defaultPrompt.js';
 import { prepareReportHtml } from './prepareReportHtml.js';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-const INITIAL_PROMPT = import.meta.env.VITE_DEFAULT_PROMPT || DEFAULT_EXPERT_PROMPT;
 
 const MOSCOW = [55.751244, 37.618423];
 
-/** Полоса заполняется за ~2 мин — ориентир ожидания, пока идёт запрос. */
-const REPORT_PROGRESS_MS = 120_000;
+/** Полоса — ориентир ожидания (согласовано с типичным DEEPSEEK_RESPONSE_TIMEOUT на бэкенде). */
+const REPORT_PROGRESS_MS = 300_000;
+
+const REPORT_LOAD_PHRASE_INTERVAL_MS = 8_000;
+
+const REPORT_LOAD_PHRASES = [
+  'Проверяем юридическую чистоту объекта в Росреестре…',
+  'Ищем данные о застройщике и его банкротствах…',
+  'Смотрим актуальные цены на квартиры в районе…',
+  'Проверяем ближайшие станции метро и время пешком…',
+  'Анализируем пробки на Рязанском проспекте…',
+  'Ищем школы и детские сады с рейтингами…',
+  'Запрашиваем данные Мосэкомониторинга по экологии…',
+  'Сверяемся с картой шума Москвы…',
+  'Проверяем статистику преступности в районе…',
+  'Ищем планы реновации и КРТ рядом с домом…',
+  'Анализируем средний срок экспозиции квартир…',
+  'Проверяем наличие коммерции на первых этажах…',
+  'Смотрим парковочные места и ситуацию во дворе…',
+  'Формируем экспертное заключение с цифрами…',
+  'Почти готово — финальные штрихи отчёта…'
+];
+
+function shuffleArray(items) {
+  const a = [...items];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 const markerIcon = L.divIcon({
   className: 'urban-marker-root',
@@ -71,6 +98,22 @@ export default function App() {
   const [marker, setMarker] = useState(null);
   /** Координаты для flyTo (маркер + центр карты при вводе адреса / клике). */
   const [flyToPosition, setFlyToPosition] = useState(null);
+  const [loadingCaption, setLoadingCaption] = useState('');
+
+  useLayoutEffect(() => {
+    if (!loading) {
+      setLoadingCaption('');
+      return undefined;
+    }
+    const order = shuffleArray(REPORT_LOAD_PHRASES);
+    let idx = 0;
+    setLoadingCaption(order[0]);
+    const id = window.setInterval(() => {
+      idx = (idx + 1) % order.length;
+      setLoadingCaption(order[idx]);
+    }, REPORT_LOAD_PHRASE_INTERVAL_MS);
+    return () => window.clearInterval(id);
+  }, [loading]);
 
   useEffect(() => {
     if (!loading) {
@@ -127,10 +170,7 @@ export default function App() {
         const res = await fetch(`${API_BASE_URL}/api/v1/report`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            address: normalized,
-            prompt: INITIAL_PROMPT
-          })
+          body: JSON.stringify({ address: normalized })
         });
         const payload = await res.json().catch(() => ({}));
         if (!res.ok || !payload.success) {
@@ -172,10 +212,7 @@ export default function App() {
         const res = await fetch(`${API_BASE_URL}/api/v1/report`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            address: resolvedAddress,
-            prompt: INITIAL_PROMPT
-          })
+          body: JSON.stringify({ address: resolvedAddress })
         });
         const payload = await res.json().catch(() => ({}));
         if (!res.ok || !payload.success) {
@@ -280,7 +317,10 @@ export default function App() {
                 <div className="load-bar-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(loadProgress)}>
                   <div className="load-bar-fill" style={{ width: `${loadProgress}%` }} />
                 </div>
-                <p className="forming-hint">Ориентир до ~2 минут. Страницу можно не закрывать — отчёт появится ниже.</p>
+                <p key={loadingCaption} className="forming-hint forming-hint--phrase">
+                  {loadingCaption}
+                </p>
+                <p className="forming-hint forming-hint--sub">Страницу можно не закрывать — результат появится ниже.</p>
               </div>
             ) : null}
             <div className="map-footer map-footer--cols">

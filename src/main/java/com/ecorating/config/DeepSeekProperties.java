@@ -10,7 +10,8 @@ public record DeepSeekProperties(
         String model,
         Duration connectTimeout,
         Duration responseTimeout,
-        String systemPrompt
+        /** Путь к файлу с системным промптом (classpath или file:). См. {@code DeepSeekSystemPromptProvider}. */
+        String systemPromptPath
 ) {
     public DeepSeekProperties {
         if (baseUrl == null || baseUrl.isBlank()) {
@@ -25,8 +26,8 @@ public record DeepSeekProperties(
         if (responseTimeout == null) {
             responseTimeout = Duration.ofMinutes(2);
         }
-        if (systemPrompt == null) {
-            systemPrompt = "";
+        if (systemPromptPath == null || systemPromptPath.isBlank()) {
+            systemPromptPath = "classpath:prompts/deepseek-system-prompt.txt";
         }
     }
 }

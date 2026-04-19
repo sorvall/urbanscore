@@ -23,6 +23,7 @@ public class DadataAddressGeocoder implements AddressGeocoder {
 
     private static final Logger log = LoggerFactory.getLogger(DadataAddressGeocoder.class);
     private static final String GEOLOCATE_ADDRESS_PATH = "/suggestions/api/4_1/rs/geolocate/address";
+    private static final String SUGGEST_ADDRESS_PATH = "/suggestions/api/4_1/rs/suggest/address";
 
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
@@ -66,6 +67,56 @@ public class DadataAddressGeocoder implements AddressGeocoder {
             return "https://suggestions.dadata.ru";
         }
         return u.endsWith("/") ? u.substring(0, u.length() - 1) : u;
+    }
+
+    @Override
+    public Optional<AddressResolution> resolveFromAddressQuery(String query) {
+        if (!enabled || !StringUtils.hasText(query)) {
+            return Optional.empty();
+        }
+        String q = query.trim();
+        if (q.length() > 400) {
+            q = q.substring(0, 400);
+        }
+        if (minIntervalMs > 0) {
+            try {
+                Thread.sleep(minIntervalMs);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return Optional.empty();
+            }
+        }
+        try {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("query", q);
+            payload.put("count", 5);
+            String bodyJson = objectMapper.writeValueAsString(payload);
+            WebClient.RequestBodySpec req = webClient
+                    .post()
+                    .uri(SUGGEST_ADDRESS_PATH)
+                    .header("Content-Type", "application/json")
+                    .header("Accept", "application/json")
+                    .header("Authorization", "Token " + token);
+            if (StringUtils.hasText(secret)) {
+                req = req.header("X-Secret", secret);
+            }
+            String body = req.bodyValue(bodyJson)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block(Duration.ofSeconds(15));
+            return parseFirstSuggestionBody(body);
+        } catch (WebClientResponseException ex) {
+            String errBody = ex.getResponseBodyAsString(StandardCharsets.UTF_8);
+            log.warn(
+                    "DaData suggest HTTP {}: {} — {}",
+                    ex.getStatusCode().value(),
+                    ex.getMessage(),
+                    errBody != null && errBody.length() > 300 ? errBody.substring(0, 300) + "…" : errBody);
+            return Optional.empty();
+        } catch (Exception ex) {
+            log.warn("DaData suggest failed: {}", ex.getMessage());
+            return Optional.empty();
+        }
     }
 
     @Override

@@ -1,5 +1,5 @@
-import { useCallback, useState } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { useCallback, useEffect, useState } from 'react';
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { DEFAULT_EXPERT_PROMPT } from './defaultPrompt.js';
@@ -10,32 +10,150 @@ const INITIAL_PROMPT = import.meta.env.VITE_DEFAULT_PROMPT || DEFAULT_EXPERT_PRO
 
 const MOSCOW = [55.751244, 37.618423];
 
-const markerIcon = L.icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41]
+/** Полоса заполняется за ~2 мин — ориентир ожидания, пока идёт запрос. */
+const REPORT_PROGRESS_MS = 120_000;
+
+const markerIcon = L.divIcon({
+  className: 'urban-marker-root',
+  html: `<div class="urban-marker-pin"><span class="urban-marker-letter">U</span></div>`,
+  iconSize: [32, 32],
+  iconAnchor: [16, 32],
+  popupAnchor: [0, -28]
 });
 
-function MapClickHandler({ onSelect }) {
+function MapClickHandler({ onSelect, clicksEnabled }) {
   useMapEvents({
     click(event) {
+      if (!clicksEnabled) {
+        return;
+      }
       onSelect(event.latlng.lat, event.latlng.lng);
     }
   });
   return null;
 }
 
+/** Пролёт карты к выбранным координатам (ручной адрес или клик). */
+function FlyToMap({ position }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!position || position.length !== 2) {
+      return;
+    }
+    const [lat, lon] = position;
+    map.flyTo([lat, lon], Math.max(map.getZoom(), 15), { duration: 0.85 });
+  }, [position, map]);
+  return null;
+}
+
+function EmptyReportState() {
+  return (
+    <div className="empty-state">
+      <svg width="70" height="70" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path
+          d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"
+          fill="#cddae9"
+        />
+      </svg>
+      <p className="empty-state-title">Укажите адрес ниже или кликните по карте</p>
+      <p className="empty-state-hint">После этого здесь появится аналитический отчёт</p>
+    </div>
+  );
+}
+
 export default function App() {
   const [loading, setLoading] = useState(false);
+  const [loadProgress, setLoadProgress] = useState(0);
   const [error, setError] = useState('');
   const [address, setAddress] = useState('');
+  const [addressInput, setAddressInput] = useState('');
   const [html, setHtml] = useState('');
   const [marker, setMarker] = useState(null);
+  /** Координаты для flyTo (маркер + центр карты при вводе адреса / клике). */
+  const [flyToPosition, setFlyToPosition] = useState(null);
+
+  useEffect(() => {
+    if (!loading) {
+      setLoadProgress(0);
+      return;
+    }
+    const start = Date.now();
+    const id = window.setInterval(() => {
+      const elapsed = Date.now() - start;
+      setLoadProgress(Math.min(100, (elapsed / REPORT_PROGRESS_MS) * 100));
+    }, 400);
+    return () => window.clearInterval(id);
+  }, [loading]);
+
+  const resetReport = useCallback(() => {
+    setLoading(false);
+    setLoadProgress(0);
+    setMarker(null);
+    setFlyToPosition(null);
+    setAddress('');
+    setAddressInput('');
+    setHtml('');
+    setError('');
+  }, []);
+
+  const onManualAddressSubmit = useCallback(
+    async (e) => {
+      e.preventDefault();
+      const raw = addressInput.trim();
+      if (!raw || loading) {
+        return;
+      }
+      setMarker(null);
+      setFlyToPosition(null);
+      setLoading(true);
+      setError('');
+      setAddress('');
+      setHtml('');
+      try {
+        const geoRes = await fetch(
+          `${API_BASE_URL}/api/v1/geocode?q=${encodeURIComponent(raw)}`
+        );
+        const geoPayload = await geoRes.json().catch(() => ({}));
+        if (!geoRes.ok || !geoPayload.success || !geoPayload.data) {
+          setError(geoPayload.error || `Не удалось найти адрес (${geoRes.status})`);
+          return;
+        }
+        const { address: normalized, lat, lon } = geoPayload.data;
+        const pos = [lat, lon];
+        setMarker(pos);
+        setFlyToPosition(pos);
+        setAddressInput(normalized);
+
+        const res = await fetch(`${API_BASE_URL}/api/v1/report`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            address: normalized,
+            prompt: INITIAL_PROMPT
+          })
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok || !payload.success) {
+          setError(payload.error || `Ошибка ${res.status}`);
+          return;
+        }
+        setAddress(payload.data?.address ?? normalized);
+        setHtml(payload.data?.html ?? '');
+      } catch (err) {
+        setError(err?.message || 'Сеть недоступна');
+      } finally {
+        setLoadProgress(100);
+        setLoading(false);
+      }
+    },
+    [addressInput, loading]
+  );
 
   const onMapClick = useCallback(
     async (lat, lon) => {
-      setMarker([lat, lon]);
+      const pos = [lat, lon];
+      setMarker(pos);
+      setFlyToPosition(pos);
       setLoading(true);
       setError('');
       setAddress('');
@@ -69,60 +187,169 @@ export default function App() {
       } catch (e) {
         setError(e?.message || 'Сеть недоступна');
       } finally {
+        setLoadProgress(100);
         setLoading(false);
       }
     },
     []
   );
 
+  const showEmpty = !loading && !error && !html;
+
   return (
-    <div className="shell">
-      <header className="header">
-        <div className="header-brand">
-          <span className="logo-mark" aria-hidden="true" />
-          <div>
-            <h1 className="header-title">UrbanScore</h1>
-            <p className="header-sub">Клик по карте — адрес и отчёт по району</p>
+    <div className="site-wrapper">
+      <header className="top-header">
+        <div className="container header-inner">
+          <div className="logo">
+            <h1 className="logo-title">
+              URBANSCORE <span className="logo-inline">⚡ рейтинг локаций</span>
+            </h1>
+            <span className="logo-tagline">аналитика недвижимости по клику</span>
+          </div>
+          <div className="badge">
+            <span className="badge-ico" aria-hidden="true">
+              📍
+            </span>
+            КАРТА → ОТЧЁТ
           </div>
         </div>
       </header>
 
-      <main className="main">
-        <section className="map-section" aria-label="Карта Москвы">
-          <div className="map-shell">
-            <MapContainer center={MOSCOW} zoom={11} className="map" attributionControl={false}>
-              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-              <MapClickHandler onSelect={onMapClick} />
-              {marker ? <Marker position={marker} icon={markerIcon} /> : null}
-            </MapContainer>
+      <div className="container">
+        <div className="hero">
+          <h2 className="hero-title">
+            Карта <span className="hero-accent">UrbanScore</span> — выберите локацию
+          </h2>
+          <p className="hero-text">
+            Введите адрес вручную или нажмите на карту — отчёт по инфраструктуре, транспорту, экологии и рынку
+            недвижимости.
+          </p>
+        </div>
+
+        <section className="address-section" aria-label="Ввод адреса">
+          <form className="address-panel" onSubmit={onManualAddressSubmit}>
+            <label className="address-label" htmlFor="manual-address">
+              Адрес
+            </label>
+            <div className="address-row">
+              <input
+                id="manual-address"
+                name="manualAddress"
+                type="text"
+                autoComplete="street-address"
+                className="address-input"
+                placeholder="Например: Москва, Ленинский проспект, 12"
+                value={addressInput}
+                onChange={(ev) => setAddressInput(ev.target.value)}
+                disabled={loading}
+              />
+              <button type="submit" className="address-submit" disabled={loading || !addressInput.trim()}>
+                Отчёт по адресу
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <section className="map-section" aria-label="Карта">
+          <div className="map-card">
+            <div className="map-header">
+              <h3 className="map-header-title">
+                🗺️ Интерактивная карта <span className="map-header-pill">клик → отчёт</span>
+              </h3>
+              <button type="button" className="reset-btn" onClick={resetReport}>
+                ⟳ Очистить отчёт
+              </button>
+            </div>
+            <div className={loading ? 'map-shell map-shell--busy' : 'map-shell'}>
+              <MapContainer center={MOSCOW} zoom={12} className="map" attributionControl={false} scrollWheelZoom>
+                <TileLayer
+                  attribution=""
+                  url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  maxZoom={19}
+                  maxNativeZoom={19}
+                  minZoom={10}
+                />
+                <MapClickHandler onSelect={onMapClick} clicksEnabled={!loading} />
+                <FlyToMap position={flyToPosition} />
+                {marker ? <Marker position={marker} icon={markerIcon} /> : null}
+              </MapContainer>
+            </div>
             {loading ? (
-              <div className="map-loading" aria-busy="true" aria-live="polite">
-                <div className="spinner" />
+              <div className="forming-panel" aria-busy="true" aria-live="polite">
+                <p className="forming-title">Отчёт формируется…</p>
+                <div className="load-bar-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(loadProgress)}>
+                  <div className="load-bar-fill" style={{ width: `${loadProgress}%` }} />
+                </div>
+                <p className="forming-hint">Ориентир до ~2 минут. Страницу можно не закрывать — отчёт появится ниже.</p>
               </div>
             ) : null}
+            <div className="map-footer map-footer--cols">
+              <span className="map-footer-note">
+                Картография: ©{' '}
+                <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">
+                  OpenStreetMap
+                </a>
+              </span>
+              <span className="map-footer-hint">
+                Номера домов и подписи улиц — при сильном приближении (колёсико мыши или «+» на карте).
+              </span>
+            </div>
           </div>
         </section>
 
-        {error ? (
-          <div className="alert alert--error" role="alert">
-            {error}
+        <section className="report-section">
+          <div className="report-card">
+            <div className="report-header">
+              <div>
+                <h3 className="report-header-title">📋 Детальный отчёт об объекте</h3>
+                {address ? <p className="report-address">{address}</p> : null}
+              </div>
+              <div className="report-badge">аналитика UrbanScore</div>
+            </div>
+            <div className="report-content">
+              {error ? (
+                <div className="alert alert--error" role="alert">
+                  {error}
+                </div>
+              ) : null}
+              {html ? (
+                <article
+                  className="report-html"
+                  dangerouslySetInnerHTML={{ __html: prepareReportHtml(html) }}
+                />
+              ) : null}
+              {showEmpty ? <EmptyReportState /> : null}
+            </div>
           </div>
-        ) : null}
+        </section>
+      </div>
 
-        {address ? (
-          <div className="address-card">
-            <span className="address-card-label">Адрес</span>
-            <p className="address-card-text">{address}</p>
+      <footer className="site-footer">
+        <div className="container">
+          <div className="footer-disclaimer">
+            <p>
+              <strong>© 2026 UrbanScore — Аналитика недвижимости</strong>
+            </p>
+            <p>
+              Информация, представленная на сайте, включая отчеты по локациям, данные о ценах, инфраструктуре и
+              инвестиционной привлекательности, носит исключительно ознакомительный и информационный характер. Мы не
+              гарантируем абсолютную точность, актуальность или полноту сведений, полученных на основе открытых источников
+              и аналитических моделей.
+            </p>
+            <p>
+              UrbanScore не является финансовым консультантом, оценщиком или участником сделок купли-продажи
+              недвижимости. Все решения о приобретении квартиры или инвестициях должны приниматься вами самостоятельно
+              после профессиональной юридической и финансовой проверки. Использование сайта означает ваше согласие с тем,
+              что мы не несем ответственности за любые возможные убытки или последствия, связанные с использованием
+              представленной информации.
+            </p>
+            <p>
+              Данные об объектах недвижимости (цены, метраж, год постройки и пр.) сгенерированы в демонстрационных целях
+              на основе рыночных тенденций и не являются публичной офертой.
+            </p>
           </div>
-        ) : null}
-
-        {html ? (
-          <article
-            className="report-html"
-            dangerouslySetInnerHTML={{ __html: prepareReportHtml(html) }}
-          />
-        ) : null}
-      </main>
+        </div>
+      </footer>
     </div>
   );
 }

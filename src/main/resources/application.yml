@@ -1,6 +1,12 @@
 spring:
   application:
     name: urbanscore
+  # Явно отключаем автоконфигурацию БД и Redis — в проекте они не используются.
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
 
 external:
   dadata:
@@ -18,8 +24,9 @@ deepseek:
   model: ${DEEPSEEK_MODEL:deepseek-chat}
   connectTimeout: ${DEEPSEEK_CONNECT_TIMEOUT:15s}
   responseTimeout: ${DEEPSEEK_RESPONSE_TIMEOUT:120s}
-  # Значение по умолчанию в кавычках — иначе «теги: …» ломает YAML.
-  systemPrompt: '${DEEPSEEK_SYSTEM_PROMPT:Отвечай в GitHub Flavored Markdown: заголовки ## и ###, списки, **жирный**, таблицы, ссылки [текст](url). Не оборачивай весь ответ в fenced code block. Не используй raw HTML, script и iframe.}'
+  # Текст промпта — в файле prompts/deepseek-system-prompt.txt (редактируйте и пересоберите / перезапустите).
+  # Переопределить целиком: DEEPSEEK_SYSTEM_PROMPT. Другой файл: DEEPSEEK_SYSTEM_PROMPT_PATH=file:/abs/path/prompt.txt
+  systemPromptPath: ${DEEPSEEK_SYSTEM_PROMPT_PATH:classpath:prompts/deepseek-system-prompt.txt}
 
 app:
   cors:

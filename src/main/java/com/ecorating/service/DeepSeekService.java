@@ -1,6 +1,7 @@
 package com.ecorating.service;
 
 import com.ecorating.config.DeepSeekProperties;
+import com.ecorating.config.DeepSeekSystemPromptProvider;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.LinkedHashMap;
@@ -11,25 +12,37 @@ import org.springframework.core.env.Environment;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 @Service
 public class DeepSeekService {
 
+    private static final Logger log = LoggerFactory.getLogger(DeepSeekService.class);
+
+    /** Сообщение для пользователя при любой ошибке ответа DeepSeek (HTTP, формат, пустой текст). */
+    public static final String USER_ERROR_MESSAGE = "Извините, произошёл сбой. Повторите попытку.";
+
     private final WebClient deepSeekWebClient;
     private final DeepSeekProperties properties;
+    private final DeepSeekSystemPromptProvider systemPromptProvider;
     private final ObjectMapper objectMapper;
     private final Environment environment;
 
     public DeepSeekService(
             @Qualifier("deepSeekWebClient") WebClient deepSeekWebClient,
             DeepSeekProperties properties,
+            DeepSeekSystemPromptProvider systemPromptProvider,
             ObjectMapper objectMapper,
             Environment environment
     ) {
         this.deepSeekWebClient = deepSeekWebClient;
         this.properties = properties;
+        this.systemPromptProvider = systemPromptProvider;
         this.objectMapper = objectMapper;
         this.environment = environment;
     }
@@ -79,38 +92,72 @@ public class DeepSeekService {
         body.put(
                 "messages",
                 List.of(
-                        Map.of("role", "system", "content", properties.systemPrompt()),
+                        Map.of("role", "system", "content", systemPromptProvider.text()),
                         Map.of("role", "user", "content", userMessage)));
 
-        String raw = deepSeekWebClient
-                .post()
-                .uri("/v1/chat/completions")
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(body)
-                .retrieve()
-                .bodyToMono(String.class)
-                .block(properties.responseTimeout().plusSeconds(5));
+        try {
+            String raw = deepSeekWebClient
+                    .post()
+                    .uri("/v1/chat/completions")
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(body)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block(properties.responseTimeout().plusSeconds(5));
 
-        return extractAssistantHtml(raw);
+            return extractAssistantHtml(raw);
+        } catch (WebClientResponseException e) {
+            log.warn("DeepSeek HTTP {}: {}", e.getStatusCode().value(), e.getResponseBodyAsString());
+            throw new IllegalStateException(USER_ERROR_MESSAGE);
+        } catch (WebClientRequestException e) {
+            log.warn("DeepSeek сеть/таймаут: {}", e.getMessage());
+            throw new IllegalStateException(USER_ERROR_MESSAGE);
+        } catch (IllegalStateException e) {
+            if (USER_ERROR_MESSAGE.equals(e.getMessage())) {
+                throw e;
+            }
+            log.warn("DeepSeek ответ не обработан: {}", e.getMessage());
+            throw new IllegalStateException(USER_ERROR_MESSAGE);
+        } catch (Exception e) {
+            log.warn("DeepSeek неожиданная ошибка", e);
+            throw new IllegalStateException(USER_ERROR_MESSAGE);
+        }
     }
 
     private String extractAssistantHtml(String rawJson) {
         if (rawJson == null || rawJson.isBlank()) {
-            throw new IllegalStateException("Пустой ответ DeepSeek");
+            log.warn("DeepSeek: пустое тело ответа");
+            throw new IllegalStateException(USER_ERROR_MESSAGE);
         }
         try {
             JsonNode root = objectMapper.readTree(rawJson);
-            JsonNode content = root.path("choices").path(0).path("message").path("content");
+            if (root.has("error")) {
+                String apiMsg = root.path("error").path("message").asText(root.path("error").asText("error"));
+                log.warn("DeepSeek error в JSON: {}", apiMsg);
+                throw new IllegalStateException(USER_ERROR_MESSAGE);
+            }
+            JsonNode choices = root.path("choices");
+            if (!choices.isArray() || choices.isEmpty()) {
+                log.warn("DeepSeek: нет choices в ответе");
+                throw new IllegalStateException(USER_ERROR_MESSAGE);
+            }
+            JsonNode content = choices.path(0).path("message").path("content");
             if (content.isMissingNode() || content.isNull()) {
-                throw new IllegalStateException("Нет текста ответа в JSON DeepSeek");
+                log.warn("DeepSeek: нет message.content");
+                throw new IllegalStateException(USER_ERROR_MESSAGE);
             }
             String text = content.asText("").trim();
+            if (!StringUtils.hasText(text)) {
+                log.warn("DeepSeek: пустой content");
+                throw new IllegalStateException(USER_ERROR_MESSAGE);
+            }
             return stripMarkdownFences(text);
         } catch (IllegalStateException e) {
             throw e;
         } catch (Exception e) {
-            throw new IllegalStateException("Не удалось разобрать ответ DeepSeek: " + e.getMessage(), e);
+            log.warn("DeepSeek: разбор JSON: {}", e.getMessage());
+            throw new IllegalStateException(USER_ERROR_MESSAGE);
         }
     }
 

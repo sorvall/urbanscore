@@ -1,6 +1,6 @@
 # Urbanscore
 
-Клик по карте → адрес (DaData) → отчёт (DeepSeek).
+Клик по карте → адрес (DaData) → отчёт (DeepSeek). **База данных и Redis не используются** — только HTTP API и внешние сервисы.
 
 ## Переменные окружения
 
@@ -12,6 +12,10 @@
 | `DEEPSEEK_API_KEY` | Ключ [DeepSeek](https://platform.deepseek.com/) |
 
 Остальные (`DADATA_*`, `DEEPSEEK_*`, `APP_CORS_ORIGINS`, `SERVER_PORT`) имеют значения по умолчанию в `src/main/resources/application.yml`.
+
+Системный промпт DeepSeek лежит в **`src/main/resources/prompts/deepseek-system-prompt.txt`** — правьте файл и перезапускайте приложение. Целиком из переменной окружения: `DEEPSEEK_SYSTEM_PROMPT`; другой файл: `DEEPSEEK_SYSTEM_PROMPT_PATH` (например `file:/path/to/prompt.txt`).
+
+API: `GET /api/v1/geocode?q=…` — геокодирование строки адреса (DaData suggest), ответ `{ address, lat, lon }` для карты и отчёта.
 
 Скопируйте `.env.example` в `.env` и заполните ключи. Файл `.env` в репозиторий не коммитится.
 

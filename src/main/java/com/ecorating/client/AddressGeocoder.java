@@ -6,6 +6,9 @@ public interface AddressGeocoder {
 
     Optional<AddressResolution> resolveFromCoordinates(double latitude, double longitude);
 
+    /** Прямое геокодирование: строка адреса → координаты и нормализованный адрес (DaData suggest). */
+    Optional<AddressResolution> resolveFromAddressQuery(String query);
+
     record AddressResolution(
             double latitude,
             double longitude,

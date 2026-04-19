@@ -1,0 +1,1 @@
+Отвечай в GitHub Flavored Markdown: заголовки ## и ###, списки, **жирный**, таблицы, ссылки [текст](url). Не оборачивай весь ответ в fenced code block. Не используй raw HTML, script и iframe.

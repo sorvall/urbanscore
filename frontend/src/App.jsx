@@ -95,6 +95,8 @@ export default function App() {
   const [address, setAddress] = useState('');
   const [addressInput, setAddressInput] = useState('');
   const [html, setHtml] = useState('');
+  /** Временно: сырой текст запроса к DeepSeek с бэка (если включён app.debug-expose-deepseek-request). */
+  const [deepseekDebug, setDeepseekDebug] = useState('');
   const [marker, setMarker] = useState(null);
   /** Координаты для flyTo (маркер + центр карты при вводе адреса / клике). */
   const [flyToPosition, setFlyToPosition] = useState(null);
@@ -136,6 +138,7 @@ export default function App() {
     setAddress('');
     setAddressInput('');
     setHtml('');
+    setDeepseekDebug('');
     setError('');
   }, []);
 
@@ -152,6 +155,7 @@ export default function App() {
       setError('');
       setAddress('');
       setHtml('');
+      setDeepseekDebug('');
       try {
         const geoRes = await fetch(
           `${API_BASE_URL}/api/v1/geocode?q=${encodeURIComponent(raw)}`
@@ -179,6 +183,7 @@ export default function App() {
         }
         setAddress(payload.data?.address ?? normalized);
         setHtml(payload.data?.html ?? '');
+        setDeepseekDebug(payload.data?.deepseekRequestDebug ?? '');
       } catch (err) {
         setError(err?.message || 'Сеть недоступна');
       } finally {
@@ -198,6 +203,7 @@ export default function App() {
       setError('');
       setAddress('');
       setHtml('');
+      setDeepseekDebug('');
       try {
         const addrRes = await fetch(
           `${API_BASE_URL}/api/v1/address?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`
@@ -221,6 +227,7 @@ export default function App() {
         }
         setAddress(payload.data?.address ?? resolvedAddress);
         setHtml(payload.data?.html ?? '');
+        setDeepseekDebug(payload.data?.deepseekRequestDebug ?? '');
       } catch (e) {
         setError(e?.message || 'Сеть недоступна');
       } finally {
@@ -351,6 +358,12 @@ export default function App() {
                 <div className="alert alert--error" role="alert">
                   {error}
                 </div>
+              ) : null}
+              {deepseekDebug ? (
+                <details className="report-deepseek-debug" open>
+                  <summary className="report-deepseek-debug-summary">Временно: запрос к DeepSeek API</summary>
+                  <pre className="report-deepseek-debug-pre">{deepseekDebug}</pre>
+                </details>
               ) : null}
               {html ? (
                 <article

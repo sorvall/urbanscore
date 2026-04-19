@@ -1,5 +1,6 @@
 package com.ecorating.controller;
 
+import com.ecorating.config.AppProperties;
 import com.ecorating.dto.ApiResponse;
 import com.ecorating.dto.ReportRequest;
 import com.ecorating.dto.ReportResponse;
@@ -19,22 +20,31 @@ public class ReportController {
 
     private final DeepSeekService deepSeekService;
     private final DeepSeekUserPromptProvider userPromptProvider;
+    private final AppProperties appProperties;
 
-    public ReportController(DeepSeekService deepSeekService, DeepSeekUserPromptProvider userPromptProvider) {
+    public ReportController(
+            DeepSeekService deepSeekService,
+            DeepSeekUserPromptProvider userPromptProvider,
+            AppProperties appProperties
+    ) {
         this.deepSeekService = deepSeekService;
         this.userPromptProvider = userPromptProvider;
+        this.appProperties = appProperties;
     }
 
     @PostMapping("/report")
     public ApiResponse<ReportResponse> report(@Valid @RequestBody ReportRequest request) {
         String userMessage =
                 "Адрес объекта: " + request.address().trim() + "\n\n" + userPromptProvider.text();
+        String debug = appProperties.debugExposeDeepseekRequest()
+                ? deepSeekService.formatChatRequestForDebug(userMessage)
+                : null;
         String html;
         try {
             html = deepSeekService.complete(userMessage);
         } catch (IllegalStateException ex) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
         }
-        return ApiResponse.ok(new ReportResponse(request.address().trim(), html));
+        return ApiResponse.ok(new ReportResponse(request.address().trim(), html, debug));
     }
 }

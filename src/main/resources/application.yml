@@ -19,7 +19,8 @@ external:
 
 deepseek:
   # camelCase — надёжная привязка к record DeepSeekProperties(apiKey, …)
-  baseUrl: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+  # Без суффикса /v1 к URL добавляется /chat/completions (OkHttp). Пример: https://api.deepseek.com/v1
+  baseUrl: ${DEEPSEEK_BASE_URL:https://api.deepseek.com/v1}
   apiKey: ${DEEPSEEK_API_KEY:}
   model: ${DEEPSEEK_MODEL:deepseek-chat}
   connectTimeout: ${DEEPSEEK_CONNECT_TIMEOUT:15s}
@@ -29,14 +30,14 @@ deepseek:
   systemPromptPath: ${DEEPSEEK_SYSTEM_PROMPT_PATH:classpath:prompts/deepseek-system-prompt.txt}
   # Текст задания отчёта (user message) — prompts/deepseek-user-prompt.txt. Переопределить: DEEPSEEK_USER_PROMPT или DEEPSEEK_USER_PROMPT_PATH
   userPromptPath: ${DEEPSEEK_USER_PROMPT_PATH:classpath:prompts/deepseek-user-prompt.txt}
-  # Веб-поиск в chat/completions (enable_search). Отключить: DEEPSEEK_ENABLE_SEARCH=false
+  # Веб-поиск в chat/completions (поле search_enable). Отключить: DEEPSEEK_ENABLE_SEARCH=false
   enableSearch: ${DEEPSEEK_ENABLE_SEARCH:true}
-  # Режим «Умный поиск» (search_mode: smart). Не отправлять поле: DEEPSEEK_SEARCH_MODE= (пусто)
-  searchMode: ${DEEPSEEK_SEARCH_MODE:smart}
 
 app:
   cors:
     allowed-origins: ${APP_CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+  # Временно: показывать на фронте JSON запроса к DeepSeek. В проде: APP_DEBUG_DEEPSEEK_REQUEST=false
+  debug-expose-deepseek-request: ${APP_DEBUG_DEEPSEEK_REQUEST:true}
 
 server:
   port: ${SERVER_PORT:8080}

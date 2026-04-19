@@ -4,43 +4,46 @@ import com.ecorating.config.DeepSeekProperties;
 import com.ecorating.config.DeepSeekSystemPromptProvider;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.env.Environment;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
-import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClientRequestException;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 @Service
 public class DeepSeekService {
 
     private static final Logger log = LoggerFactory.getLogger(DeepSeekService.class);
 
+    private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+
     /** Сообщение для пользователя при любой ошибке ответа DeepSeek (HTTP, формат, пустой текст). */
     public static final String USER_ERROR_MESSAGE = "Извините, произошёл сбой. Повторите попытку.";
 
-    private final WebClient deepSeekWebClient;
+    private final OkHttpClient deepSeekHttpClient;
     private final DeepSeekProperties properties;
     private final DeepSeekSystemPromptProvider systemPromptProvider;
     private final ObjectMapper objectMapper;
     private final Environment environment;
 
     public DeepSeekService(
-            @Qualifier("deepSeekWebClient") WebClient deepSeekWebClient,
+            @Qualifier("deepSeekHttpClient") OkHttpClient deepSeekHttpClient,
             DeepSeekProperties properties,
             DeepSeekSystemPromptProvider systemPromptProvider,
             ObjectMapper objectMapper,
             Environment environment
     ) {
-        this.deepSeekWebClient = deepSeekWebClient;
+        this.deepSeekHttpClient = deepSeekHttpClient;
         this.properties = properties;
         this.systemPromptProvider = systemPromptProvider;
         this.objectMapper = objectMapper;
@@ -81,58 +84,73 @@ public class DeepSeekService {
         return t;
     }
 
+    /** URL chat/completions: {@code baseUrl} + {@code /chat/completions} (как в примерах DeepSeek). */
+    public String chatCompletionsUrl() {
+        String b = properties.baseUrl().trim();
+        if (b.endsWith("/")) {
+            b = b.substring(0, b.length() - 1);
+        }
+        return b + "/chat/completions";
+    }
+
+    private Map<String, Object> chatRequestBody(String userMessage) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("model", properties.model());
+        body.put("search_enable", properties.enableSearch());
+        body.put(
+                "messages",
+                List.of(
+                        Map.of("role", "system", "content", systemPromptProvider.text()),
+                        Map.of("role", "user", "content", userMessage)));
+        return body;
+    }
+
+    /**
+     * Текст для отладки UI: метод и URL (без секрета) + тело запроса в JSON (с системным и пользовательским текстом).
+     */
+    public String formatChatRequestForDebug(String userMessage) {
+        try {
+            String pretty = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(chatRequestBody(userMessage));
+            return "POST " + chatCompletionsUrl() + "\n\n" + pretty;
+        } catch (Exception e) {
+            log.warn("DeepSeek: отладочная сериализация", e);
+            return "POST " + chatCompletionsUrl() + "\n\n(ошибка сериализации)";
+        }
+    }
+
     public String complete(String userMessage) {
         String apiKey = resolveApiKey();
         if (!StringUtils.hasText(apiKey)) {
             throw new IllegalStateException(
                     "Не задан DEEPSEEK_API_KEY: задайте переменную окружения или deepseek.apiKey в конфиге и перезапустите приложение.");
         }
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("model", properties.model());
-        body.put("enable_search", properties.enableSearch());
-        if (properties.enableSearch() && StringUtils.hasText(properties.searchMode())) {
-            body.put("search_mode", properties.searchMode().trim());
-        }
-        body.put(
-                "messages",
-                List.of(
-                        Map.of("role", "system", "content", systemPromptProvider.text()),
-                        Map.of("role", "user", "content", userMessage)));
 
+        String json;
         try {
-            // Согласовано с HttpClient.responseTimeout в DeepSeekClientConfig; запас на сеть.
-            var wait = properties.responseTimeout().plusSeconds(15);
-            String raw = deepSeekWebClient
-                    .post()
-                    .uri("/v1/chat/completions")
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(body)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block(wait);
-
-            return extractAssistantHtml(raw);
-        } catch (WebClientResponseException e) {
-            log.warn("DeepSeek HTTP {}: {}", e.getStatusCode().value(), e.getResponseBodyAsString());
-            throw new IllegalStateException(USER_ERROR_MESSAGE);
-        } catch (WebClientRequestException e) {
-            log.warn("DeepSeek сеть/таймаут: {}", e.getMessage());
-            throw new IllegalStateException(USER_ERROR_MESSAGE);
-        } catch (IllegalStateException e) {
-            if (USER_ERROR_MESSAGE.equals(e.getMessage())) {
-                throw e;
-            }
-            if (e.getMessage() != null && e.getMessage().contains("Timeout on blocking read")) {
-                log.warn(
-                        "DeepSeek: истекло время ожидания ответа (лимит ~{}). Увеличьте DEEPSEEK_RESPONSE_TIMEOUT в .env / application.yml.",
-                        properties.responseTimeout());
-            } else {
-                log.warn("DeepSeek ответ не обработан: {}", e.getMessage());
-            }
-            throw new IllegalStateException(USER_ERROR_MESSAGE);
+            json = objectMapper.writeValueAsString(chatRequestBody(userMessage));
         } catch (Exception e) {
-            log.warn("DeepSeek неожиданная ошибка", e);
+            log.warn("DeepSeek: сериализация тела запроса", e);
+            throw new IllegalStateException(USER_ERROR_MESSAGE);
+        }
+
+        Request request = new Request.Builder()
+                .url(chatCompletionsUrl())
+                .addHeader("Authorization", "Bearer " + apiKey)
+                .post(RequestBody.create(json, JSON))
+                .build();
+
+        try (Response response = deepSeekHttpClient.newCall(request).execute()) {
+            String raw = response.body() != null ? response.body().string() : null;
+            if (!response.isSuccessful()) {
+                log.warn("DeepSeek HTTP {}: {}", response.code(), raw);
+                throw new IllegalStateException(USER_ERROR_MESSAGE);
+            }
+            return extractAssistantHtml(raw);
+        } catch (IOException e) {
+            log.warn(
+                    "DeepSeek сеть/таймаут (лимит ответа ~{}): {}",
+                    properties.responseTimeout(),
+                    e.getMessage());
             throw new IllegalStateException(USER_ERROR_MESSAGE);
         }
     }

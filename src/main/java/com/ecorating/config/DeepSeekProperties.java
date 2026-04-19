@@ -14,17 +14,12 @@ public record DeepSeekProperties(
         String systemPromptPath,
         /** Путь к файлу с текстом пользовательского сообщения (задание отчёта). См. {@code DeepSeekUserPromptProvider}. */
         String userPromptPath,
-        /** Включить веб-поиск в запросе к API (поле {@code enable_search} в теле chat/completions). */
-        boolean enableSearch,
-        /**
-         * Режим поиска (поле {@code search_mode}), например {@code smart} — «Умный поиск» в интерфейсе DeepSeek.
-         * Пустая строка — не отправлять параметр (если API не поддерживает).
-         */
-        String searchMode
+        /** Включить веб-поиск в теле chat/completions (поле {@code search_enable}). */
+        boolean enableSearch
 ) {
     public DeepSeekProperties {
         if (baseUrl == null || baseUrl.isBlank()) {
-            baseUrl = "https://api.deepseek.com";
+            baseUrl = "https://api.deepseek.com/v1";
         }
         if (model == null || model.isBlank()) {
             model = "deepseek-chat";
@@ -40,9 +35,6 @@ public record DeepSeekProperties(
         }
         if (userPromptPath == null || userPromptPath.isBlank()) {
             userPromptPath = "classpath:prompts/deepseek-user-prompt.txt";
-        }
-        if (searchMode == null) {
-            searchMode = "smart";
         }
     }
 }

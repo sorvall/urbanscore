@@ -15,7 +15,7 @@
 
 - **Системный** промпт (формат ответа): **`src/main/resources/prompts/deepseek-system-prompt.txt`**. Подмена: `DEEPSEEK_SYSTEM_PROMPT` или `DEEPSEEK_SYSTEM_PROMPT_PATH`.
 - **Пользовательское задание** (текст экспертного отчёта): **`src/main/resources/prompts/deepseek-user-prompt.txt`**. Подмена: `DEEPSEEK_USER_PROMPT` или `DEEPSEEK_USER_PROMPT_PATH`.
-- Запросы к DeepSeek с **веб-поиском**: **`enable_search: true`** и **`search_mode: smart`** («Умный поиск»). Отключить поиск: **`DEEPSEEK_ENABLE_SEARCH=false`**. Убрать только `search_mode` (если API вернёт ошибку): **`DEEPSEEK_SEARCH_MODE=`** (пустое значение).
+- Запросы к DeepSeek с **веб-поиском**: в теле передаётся **`search_enable: true`** (не `enable_search`). Отключить: **`DEEPSEEK_ENABLE_SEARCH=false`**.
 
 Фронтенд в `POST /api/v1/report` передаёт только **`address`**; полный промпт подставляет бэкенд.
 

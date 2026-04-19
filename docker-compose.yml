@@ -1,65 +1,16 @@
 version: '3.9'
 
 services:
-  postgres:
-    image: postgis/postgis:16-3.4
-    container_name: ecorating-postgres
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-ecorating}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-ecorating}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:7-alpine
-    container_name: ecorating-redis
-    ports:
-      - "6379:6379"
-    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: ecorating-app
+    container_name: urbanscore-app
+    restart: unless-stopped
     env_file:
       - .env
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    # MOS_DATA_* только из env_file (.env): не дублировать в environment с ${MOS_DATA_API_KEY} —
-    # подстановка Compose часто пустая и перетирает ключ из файла.
     environment:
-      DB_URL: ${DB_URL:-jdbc:postgresql://postgres:5432/ecorating}
-      DB_USERNAME: ${DB_USERNAME:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-postgres}
-      REDIS_HOST: ${REDIS_HOST:-redis}
-      REDIS_PORT: ${REDIS_PORT:-6379}
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-      REDIS_TIMEOUT: ${REDIS_TIMEOUT:-3s}
-      AQICN_BASE_URL: ${AQICN_BASE_URL:-https://api.waqi.info}
-      OVERPASS_BASE_URL: ${OVERPASS_BASE_URL:-https://overpass-api.de/api/interpreter}
-      CACHE_TTL_AQICN: ${CACHE_TTL_AQICN:-15m}
-      CACHE_TTL_OVERPASS: ${CACHE_TTL_OVERPASS:-6h}
-      # Перекрывает .env: фиксированный путь под том (см. volumes ниже)
-      MOS_DATA_LANDSCAPING_SNAPSHOT_DIR: /var/urbanscore/mos-landscaping-snapshots
-    volumes:
-      - mos_landscaping_snapshots:/var/urbanscore/mos-landscaping-snapshots
+      APP_CORS_ORIGINS: ${APP_CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
     ports:
       - "8080:8080"
 
@@ -67,13 +18,10 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: ecorating-frontend
+      args:
+        VITE_API_BASE_URL: http://localhost:8080
+    container_name: urbanscore-frontend
     depends_on:
-      app:
-        condition: service_started
+      - app
     ports:
       - "5173:80"
-
-volumes:
-  postgres_data:
-  mos_landscaping_snapshots:

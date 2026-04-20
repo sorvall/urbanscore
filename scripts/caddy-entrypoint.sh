@@ -5,4 +5,6 @@ set -eu
 if [ -z "${CADDY_SITE_LABELS:-}" ]; then
 	export CADDY_SITE_LABELS="${CADDY_DOMAIN:-localhost}"
 fi
+# Caddy 2.8+: в списке site-адресов после запятой нужен пробел: «a, b», иначе ошибка adapting config.
+export CADDY_SITE_LABELS="$(printf '%s' "$CADDY_SITE_LABELS" | sed 's/, */, /g')"
 exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile

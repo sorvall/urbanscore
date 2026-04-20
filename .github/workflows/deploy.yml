@@ -1,20 +1,23 @@
-# Деплой на удалённый сервер: rsync кода + docker compose up --build
+# Деплой на VPS: архив кода → SCP → распаковка → docker compose (backend + frontend).
 #
-# Нужные секреты репозитория (Settings → Secrets and variables → Actions):
-#   SSH_PRIVATE_KEY — приватный ключ (pem), пара к публичному ключу в ~/.ssh/authorized_keys на сервере
-#   SSH_HOST       — хост или IP сервера
-#   SSH_USER       — пользователь SSH (например deploy)
-#   DEPLOY_PATH    — абсолютный путь к каталогу с проектом на сервере (например /home/deploy/urbanscore)
+# Секреты GitHub (Settings → Secrets and variables → Actions):
+#   SERVER_HOST     — IP или домен сервера
+#   SERVER_USER     — пользователь SSH (например root или deploy)
+#   SSH_PASSWORD    — пароль SSH (или задайте ключ ниже вместо пароля — см. appleboy docs)
+#   DEPLOY_PATH     — каталог на сервере, например /root/urbanscore-app
 #
 # Опционально:
-#   SSH_PORT       — порт SSH, если не 22
+#   SSH_PORT        — порт SSH, если не 22
 #
-# На сервере один раз:
-#   - git clone не обязателен — каталог создаётся при первом деплое из Actions
-#   - положите .env рядом с docker-compose.yml (ключи DaData, DeepSeek и т.д.) — в репозиторий .env не попадает
-#   - для продакшена в .env задайте VITE_API_BASE_URL и VITE_SITE_URL (публичные URL API и сайта для сборки фронта)
+# На сервере один раз: установлены Docker и docker compose plugin.
+# В DEPLOY_PATH положите файл .env (не в git) с ключами DaData, DeepSeek и:
+#   VITE_API_BASE_URL=https://ваш-домен-или-ip:8080   (или https://api.… если прокси)
+#   VITE_SITE_URL=https://ваш-фронт
+#   APP_CORS_ORIGINS=https://ваш-фронт
+#
+# Порты по умолчанию из docker-compose: бэкенд 8080, фронт 5173→80 в контейнере.
 
-name: Deploy
+name: Build and Deploy Urbanscore
 
 on:
   push:
@@ -28,41 +31,92 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+
+    env:
+      SSH_PORT_DEPLOY: ${{ secrets.SSH_PORT }}
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Start SSH agent
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-      - name: Rsync and Docker Compose
-        env:
-          SSH_HOST: ${{ secrets.SSH_HOST }}
-          SSH_USER: ${{ secrets.SSH_USER }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-          SSH_PORT: ${{ secrets.SSH_PORT }}
+      - name: Verify deployment secrets
         run: |
           set -euo pipefail
-          test -n "${SSH_HOST:-}" && test -n "${SSH_USER:-}" && test -n "${DEPLOY_PATH:-}" || {
-            echo "Задайте секреты SSH_HOST, SSH_USER и DEPLOY_PATH"
+          if [ -z "${{ secrets.SERVER_HOST }}" ] || [ -z "${{ secrets.SERVER_USER }}" ] || \
+             [ -z "${{ secrets.SSH_PASSWORD }}" ] || [ -z "${{ secrets.DEPLOY_PATH }}" ]; then
+            echo "::error::Задайте секреты репозитория: SERVER_HOST, SERVER_USER, SSH_PASSWORD, DEPLOY_PATH (скрипт: scripts/gh-set-deploy-secrets.sh)"
             exit 1
-          }
-          PORT="${SSH_PORT:-22}"
-          SSH_OPTS="-o StrictHostKeyChecking=accept-new -p ${PORT}"
-          ssh ${SSH_OPTS} "${SSH_USER}@${SSH_HOST}" "mkdir -p '${DEPLOY_PATH}'"
-          rsync -avz --delete \
-            --exclude='.git' \
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+          cache: "maven"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build backend (fail fast before deploy)
+        run: mvn -B -q -DskipTests package
+
+      - name: Build frontend (fail fast before deploy)
+        working-directory: frontend
+        run: npm ci && npm run build
+
+      - name: Create deployment archive
+        run: |
+          set -euo pipefail
+          tar --exclude='.git' \
             --exclude='node_modules' \
             --exclude='frontend/node_modules' \
             --exclude='target' \
-            --exclude='.env' \
             --exclude='.github' \
-            -e "ssh ${SSH_OPTS}" \
-            ./ "${SSH_USER}@${SSH_HOST}:${DEPLOY_PATH}/"
-          ssh ${SSH_OPTS} "${SSH_USER}@${SSH_HOST}" \
-            "set -euo pipefail; cd '${DEPLOY_PATH}' && docker compose up -d --build && docker compose ps"
+            -czf urbanscore-deploy.tgz .
+
+      - name: Ensure deploy directory exists
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ env.SSH_PORT_DEPLOY != '' && env.SSH_PORT_DEPLOY || 22 }}
+          script: mkdir -p '${{ secrets.DEPLOY_PATH }}'
+
+      - name: Copy archive to remote server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ env.SSH_PORT_DEPLOY != '' && env.SSH_PORT_DEPLOY || 22 }}
+          source: "urbanscore-deploy.tgz"
+          target: ${{ secrets.DEPLOY_PATH }}
+
+      - name: Extract and run Docker Compose
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ env.SSH_PORT_DEPLOY != '' && env.SSH_PORT_DEPLOY || 22 }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            DEPLOY_PATH='${{ secrets.DEPLOY_PATH }}'
+            test -n "$DEPLOY_PATH"
+            cd "$DEPLOY_PATH"
+            # Обновляем код, не трогая .env
+            find . -mindepth 1 -maxdepth 1 ! -name '.env' -exec rm -rf {} +
+            tar xzf urbanscore-deploy.tgz
+            rm -f urbanscore-deploy.tgz
+            docker compose up -d --build
+            docker compose ps

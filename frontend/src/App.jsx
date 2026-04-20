@@ -42,7 +42,7 @@ function shuffleArray(items) {
 
 const markerIcon = L.divIcon({
   className: 'urban-marker-root',
-  html: `<div class="urban-marker-pin"><span class="urban-marker-letter">U</span></div>`,
+  html: `<div class="urban-marker-pin"><span class="urban-marker-letter">М</span></div>`,
   iconSize: [32, 32],
   iconAnchor: [16, 32],
   popupAnchor: [0, -28]
@@ -246,7 +246,7 @@ export default function App() {
         <div className="container header-inner">
           <div className="logo">
             <h1 className="logo-title">
-              URBANSCORE <span className="logo-inline">⚡ рейтинг локаций</span>
+              МОСДОМЭКСПЕРТ <span className="logo-inline">⚡ рейтинг локаций</span>
             </h1>
             <span className="logo-tagline">аналитика недвижимости по клику</span>
           </div>
@@ -262,7 +262,7 @@ export default function App() {
       <div className="container">
         <div className="hero">
           <h2 className="hero-title">
-            Карта <span className="hero-accent">UrbanScore</span> — выберите локацию
+            Карта <span className="hero-accent">МОСДОМЭКСПЕРТ</span> — выберите локацию
           </h2>
           <p className="hero-text">
             Введите адрес вручную или нажмите на карту — отчёт по инфраструктуре, транспорту, экологии и рынку
@@ -351,7 +351,7 @@ export default function App() {
                 <h3 className="report-header-title">📋 Детальный отчёт об объекте</h3>
                 {address ? <p className="report-address">{address}</p> : null}
               </div>
-              <div className="report-badge">аналитика UrbanScore</div>
+              <div className="report-badge">аналитика МОСДОМЭКСПЕРТ</div>
             </div>
             <div className="report-content">
               {error ? (
@@ -381,7 +381,7 @@ export default function App() {
         <div className="container">
           <div className="footer-disclaimer">
             <p>
-              <strong>© 2026 UrbanScore — Аналитика недвижимости</strong>
+              <strong>© 2026 МОСДОМЭКСПЕРТ — Аналитика недвижимости</strong>
             </p>
             <p>
               Информация, представленная на сайте, включая отчеты по локациям, данные о ценах, инфраструктуре и
@@ -390,7 +390,7 @@ export default function App() {
               и аналитических моделей.
             </p>
             <p>
-              UrbanScore не является финансовым консультантом, оценщиком или участником сделок купли-продажи
+              МОСДОМЭКСПЕРТ не является финансовым консультантом, оценщиком или участником сделок купли-продажи
               недвижимости. Все решения о приобретении квартиры или инвестициях должны приниматься вами самостоятельно
               после профессиональной юридической и финансовой проверки. Использование сайта означает ваше согласие с тем,
               что мы не несем ответственности за любые возможные убытки или последствия, связанные с использованием

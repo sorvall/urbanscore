@@ -1,0 +1,53 @@
+# Альтернатива deploy.yml: деплой по SSH-ключу + rsync (без пароля).
+#
+# Секреты: SSH_PRIVATE_KEY, SSH_HOST, SSH_USER, DEPLOY_PATH
+# Опционально: SSH_PORT
+
+name: Deploy (rsync + SSH key)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Start SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Rsync and Docker Compose
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+        run: |
+          set -euo pipefail
+          test -n "${SSH_HOST:-}" && test -n "${SSH_USER:-}" && test -n "${DEPLOY_PATH:-}" || {
+            echo "Задайте секреты SSH_HOST, SSH_USER и DEPLOY_PATH"
+            exit 1
+          }
+          PORT="${SSH_PORT:-22}"
+          SSH_OPTS="-o StrictHostKeyChecking=accept-new -p ${PORT}"
+          ssh ${SSH_OPTS} "${SSH_USER}@${SSH_HOST}" "mkdir -p '${DEPLOY_PATH}'"
+          rsync -avz --delete \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='frontend/node_modules' \
+            --exclude='target' \
+            --exclude='.env' \
+            --exclude='.github' \
+            -e "ssh ${SSH_OPTS}" \
+            ./ "${SSH_USER}@${SSH_HOST}:${DEPLOY_PATH}/"
+          ssh ${SSH_OPTS} "${SSH_USER}@${SSH_HOST}" \
+            "set -euo pipefail; cd '${DEPLOY_PATH}' && docker compose up -d --build && docker compose ps"

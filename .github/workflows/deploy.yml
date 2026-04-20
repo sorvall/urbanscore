@@ -75,12 +75,14 @@ jobs:
       - name: Create deployment archive
         run: |
           set -euo pipefail
+          ARCHIVE_PATH="/tmp/urbanscore-deploy-${GITHUB_RUN_ID}.tgz"
           tar --exclude='.git' \
             --exclude='node_modules' \
             --exclude='frontend/node_modules' \
             --exclude='target' \
             --exclude='.github' \
-            -czf urbanscore-deploy.tgz .
+            -czf "${ARCHIVE_PATH}" .
+          mv "${ARCHIVE_PATH}" urbanscore-deploy.tgz
 
       - name: Ensure deploy directory exists
         uses: appleboy/ssh-action@v0.1.10

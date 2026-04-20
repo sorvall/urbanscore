@@ -28,6 +28,9 @@ export function initYandexMetrika() {
   }
   initDone = true;
 
+  window.dataLayer = window.dataLayer || [];
+
+  const tagUrl = `https://mc.yandex.ru/metrika/tag.js?id=${id}`;
   (function loadYm(m, e, t, r, i, k, a) {
     m[i] =
       m[i] ||
@@ -45,12 +48,17 @@ export function initYandexMetrika() {
     k.async = 1;
     k.src = r;
     a.parentNode.insertBefore(k, a);
-  })(window, document, 'script', 'https://mc.yandex.ru/metrika/tag.js', 'ym');
+  })(window, document, 'script', tagUrl, 'ym');
 
   window.ym(id, 'init', {
+    ssr: true,
+    webvisor: true,
     clickmap: true,
-    trackLinks: true,
-    accurateTrackBounce: true
+    ecommerce: 'dataLayer',
+    referrer: document.referrer,
+    url: location.href,
+    accurateTrackBounce: true,
+    trackLinks: true
   });
 }
 

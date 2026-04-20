@@ -116,8 +116,11 @@ jobs:
             DEPLOY_PATH='${{ secrets.DEPLOY_PATH }}'
             test -n "$DEPLOY_PATH"
             cd "$DEPLOY_PATH"
-            # Обновляем код, не трогая .env
-            find . -mindepth 1 -maxdepth 1 ! -name '.env' -exec rm -rf {} +
+            # Обновляем код, не трогая .env и загруженный архив
+            find . -mindepth 1 -maxdepth 1 \
+              ! -name '.env' \
+              ! -name 'urbanscore-deploy.tgz' \
+              -exec rm -rf {} +
             tar xzf urbanscore-deploy.tgz
             rm -f urbanscore-deploy.tgz
             docker compose up -d --build

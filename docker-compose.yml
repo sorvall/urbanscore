@@ -17,8 +17,9 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
-        VITE_SITE_URL: ${VITE_SITE_URL:-http://localhost:5173}
+        # «-» без двоеточия: дефолт только если переменная не задана; пустая строка = same-origin /api (nginx → app)
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL-http://localhost:8080}
+        VITE_SITE_URL: ${VITE_SITE_URL-http://localhost:5173}
     container_name: urbanscore-frontend
     depends_on:
       - app

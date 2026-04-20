@@ -153,5 +153,11 @@ jobs:
               exit 1
             fi
 
+            if [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ] && [ -n "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+              echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+            else
+              echo "::notice::DOCKERHUB_USERNAME/DOCKERHUB_TOKEN not set; using anonymous pulls."
+            fi
+
             $COMPOSE_CMD up -d --build
             $COMPOSE_CMD ps

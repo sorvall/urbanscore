@@ -123,5 +123,26 @@ jobs:
               -exec rm -rf {} +
             tar xzf urbanscore-deploy.tgz
             rm -f urbanscore-deploy.tgz
-            docker compose up -d --build
-            docker compose ps
+            if ! command -v docker >/dev/null 2>&1; then
+              echo "Docker not found. Installing via get.docker.com..."
+              if command -v curl >/dev/null 2>&1; then
+                curl -fsSL https://get.docker.com | sh
+              elif command -v wget >/dev/null 2>&1; then
+                wget -qO- https://get.docker.com | sh
+              else
+                echo "::error::Neither curl nor wget is available to install Docker."
+                exit 1
+              fi
+            fi
+
+            if docker compose version >/dev/null 2>&1; then
+              COMPOSE_CMD="docker compose"
+            elif command -v docker-compose >/dev/null 2>&1; then
+              COMPOSE_CMD="docker-compose"
+            else
+              echo "::error::Docker Compose is not available on server."
+              exit 1
+            fi
+
+            $COMPOSE_CMD up -d --build
+            $COMPOSE_CMD ps

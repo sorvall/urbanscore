@@ -24,7 +24,7 @@ services:
     ports:
       - "5173:80"
 
-  # HTTPS (Let's Encrypt): прокси на фронт и API. На сервере задайте CADDY_DOMAIN и откройте 80/443.
+  # HTTPS (Let's Encrypt): прокси на фронт и API. На сервере задайте CADDY_SITE_LABELS (и 80/443).
   caddy:
     image: caddy:2.8-alpine
     container_name: urbanscore-caddy
@@ -33,7 +33,8 @@ services:
       - "80:80"
       - "443:443"
     environment:
-      CADDY_DOMAIN: ${CADDY_DOMAIN:-localhost}
+      # Для .рф: лучше оба имени: мосдомэксперт.рф,xn--....xn--p1ai (см. Caddyfile). Иначе — fallback на CADDY_DOMAIN.
+      CADDY_SITE_LABELS: ${CADDY_SITE_LABELS:-${CADDY_DOMAIN:-localhost}}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

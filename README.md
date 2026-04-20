@@ -38,16 +38,16 @@ docker compose up -d --build
 
 ### HTTPS (Let's Encrypt)
 
-В `docker-compose.yml` поднят **Caddy**: он запрашивает и обновляет сертификаты у Let's Encrypt для домена из **`CADDY_DOMAIN`**, проксирует `/api/*` на бэкенд и остальное на фронт. Нужны **открытые порты 80 и 443** на сервере и **A-запись DNS** домена на IP сервера.
+В `docker-compose.yml` поднят **Caddy**: он запрашивает и обновляет сертификаты у Let's Encrypt для имён из **`CADDY_SITE_LABELS`**, проксирует `/api/*` на бэкенд и остальное на фронт. Нужны **открытые порты 80 и 443** на сервере и **A-запись DNS** домена на IP сервера.
 
 На сервере в `.env` (в каталоге деплоя), затем `docker compose up -d --build`:
 
-- **`CADDY_DOMAIN`** — ваш домен, например `мосдомэксперт.рф` (без `https://`). Почту для ACME при желании добавьте в начало `Caddyfile`: глобальный блок `{ email you@example.com }` (см. [документацию Caddy](https://caddyserver.com/docs/caddyfile/options#email)).
+- **`CADDY_SITE_LABELS`** — для кириллического **`.рф`** укажите **два** имени через запятую (UTF-8 и punycode), например: `мосдомэксперт.рф,xn--d1acogbkbkkdep1l.xn--p1ai`. Иначе часть браузеров шлёт Host в punycode, и запрос может не попасть в нужный блок Caddy (по IP при этом всё ок). Если задан только старый **`CADDY_DOMAIN`**, он подставится, пока `CADDY_SITE_LABELS` пустой. Почту для ACME при желании — глобальный блок `{ email … }` в `Caddyfile` ([документация Caddy](https://caddyserver.com/docs/caddyfile/options#email)).
 - **`VITE_API_BASE_URL=`** — пусто, чтобы фронт ходил в API по тому же хосту через прокси.
 - **`VITE_SITE_URL=https://мосдомэксперт.рф`** (ваш URL).
 - **`APP_CORS_ORIGINS`** — по умолчанию **`*`** (любой Origin): и домен, и `http://IP:5173` работают. Чтобы сузить список, укажите через запятую, например `https://мосдомэксперт.рф,http://72.56.232.145:5173`.
 
-Локально без публичного домена по умолчанию используется `CADDY_DOMAIN=localhost` (без выдачи LE). Прямой доступ по-прежнему: порты **5173** (фронт) и **8080** (API).
+Локально без публичного домена по умолчанию используется `localhost` для Caddy (без выдачи LE). Прямой доступ по-прежнему: порты **5173** (фронт) и **8080** (API).
 
 Долгий отчёт (`POST /api/v1/report`): nginx/Caddy ждут ответ бэкенда до **600 с** (см. `frontend/nginx.conf`, `Caddyfile`); таймаут DeepSeek настраивается **`DEEPSEEK_RESPONSE_TIMEOUT`** в `.env` / `application.yml`.
 

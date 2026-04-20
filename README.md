@@ -32,6 +32,8 @@ docker compose up -d --build
 - Фронт: http://localhost:5173  
 - API: http://localhost:8080  
 
+Если **`VITE_API_BASE_URL` пустой** (один домен за Caddy), nginx во фронтенде проксирует **`/api/*` на контейнер `app`** (`frontend/nginx.conf`) — запросы с карты и формы идут на тот же хост и порт, что и страница (в т.ч. при открытии по `http://IP:5173`).
+
 Фронт при сборке получает `VITE_API_BASE_URL=http://localhost:8080` (см. `docker-compose.yml`). Для SEO (canonical, `robots.txt`, `sitemap.xml`) задайте **`VITE_SITE_URL`** — боевой URL без завершающего слэша, например `https://urbanscore.example.ru` (в `docker-compose.yml` передаётся как build-arg; для локальной сборки см. `frontend/.env.example`).
 
 ### HTTPS (Let's Encrypt)

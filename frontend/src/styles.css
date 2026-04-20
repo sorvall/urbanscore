@@ -297,6 +297,10 @@ body {
   cursor: wait;
 }
 
+.map-shell--loading .leaflet-container {
+  filter: saturate(0.72) brightness(0.92);
+}
+
 .map {
   height: 100% !important;
   width: 100%;
@@ -308,32 +312,59 @@ body {
   display: none !important;
 }
 
+/* Полноэкранный слой поверх карты во время генерации отчёта */
+.forming-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
+  background: linear-gradient(
+    155deg,
+    rgba(18, 32, 52, 0.94) 0%,
+    rgba(28, 42, 64, 0.96) 48%,
+    rgba(20, 36, 58, 0.95) 100%
+  );
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
 .forming-panel {
-  padding: 16px 24px 18px;
-  background: linear-gradient(180deg, #fffef8 0%, #ffffff 100%);
-  border-top: 1px solid #fef3d6;
-  border-bottom: 1px solid #edf2f7;
+  width: 100%;
+  max-width: 420px;
+  padding: 22px 24px 20px;
+  background: linear-gradient(180deg, #fffdf6 0%, #ffffff 55%);
+  border: 1px solid rgba(245, 183, 0, 0.35);
+  border-radius: 20px;
+  box-shadow:
+    0 4px 6px rgba(15, 23, 42, 0.08),
+    0 22px 48px rgba(15, 23, 42, 0.28);
 }
 
 .forming-title {
-  margin: 0 0 10px;
+  margin: 0 0 12px;
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 1.05rem;
   color: #1f2a3a;
+  letter-spacing: -0.01em;
 }
 
 .load-bar-track {
-  height: 8px;
+  height: 9px;
   border-radius: 999px;
-  background: #eef2f5;
+  background: rgba(15, 23, 42, 0.08);
   overflow: hidden;
 }
 
 .load-bar-fill {
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #f5b700, #d48f00);
+  background: linear-gradient(90deg, #f5b700, #e09400);
   min-width: 0;
+  transition: width 0.35s ease-out;
 }
 
 .forming-hint {
@@ -343,30 +374,53 @@ body {
   line-height: 1.4;
 }
 
+.forming-phrase-slot {
+  margin-top: 14px;
+  min-height: 3.1em;
+  overflow: hidden;
+}
+
 .forming-hint--phrase {
-  margin: 12px 0 0;
-  font-size: 0.875rem;
+  margin: 0;
+  font-size: 0.9rem;
   font-weight: 500;
-  color: #3d4f66;
-  line-height: 1.45;
-  min-height: 2.9em;
-  animation: formingPhraseIn 0.42s ease-out;
+  color: #2c3d52;
+  line-height: 1.5;
+  animation: formingPhraseSwap 0.58s cubic-bezier(0.22, 0.85, 0.32, 1) both;
 }
 
 .forming-hint--sub {
-  margin-top: 8px;
+  margin-top: 12px;
   font-size: 0.78rem;
-  color: #8b9bb0;
+  color: #6b7c94;
+  line-height: 1.45;
 }
 
-@keyframes formingPhraseIn {
-  from {
+@keyframes formingPhraseSwap {
+  0% {
     opacity: 0;
-    transform: translateY(5px);
+    transform: translateY(14px) scale(0.98);
+    filter: blur(5px);
   }
-  to {
+  55% {
+    filter: blur(0);
+  }
+  100% {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .forming-hint--phrase {
+    animation: none;
+  }
+  .load-bar-fill {
+    transition: none;
+  }
+  .map-shell--loading .leaflet-container {
+    filter: none;
   }
 }
 

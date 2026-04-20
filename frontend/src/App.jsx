@@ -19,7 +19,7 @@ const REPORT_LOAD_PHRASES = [
   'Ищем данные о застройщике и его банкротствах…',
   'Смотрим актуальные цены на квартиры в районе…',
   'Проверяем ближайшие станции метро и время пешком…',
-  'Анализируем пробки на Рязанском проспекте…',
+  'Анализируем пробки на ближайших шоссе…',
   'Ищем школы и детские сады с рейтингами…',
   'Запрашиваем данные Мосэкомониторинга по экологии…',
   'Сверяемся с картой шума Москвы…',
@@ -298,7 +298,11 @@ export default function App() {
                 ⟳ Очистить отчёт
               </button>
             </div>
-            <div className={loading ? 'map-shell map-shell--busy' : 'map-shell'}>
+            <div
+              className={
+                loading ? 'map-shell map-shell--busy map-shell--loading' : 'map-shell'
+              }
+            >
               <MapContainer center={MOSCOW} zoom={12} className="map" attributionControl={false} scrollWheelZoom>
                 <TileLayer
                   attribution=""
@@ -311,19 +315,31 @@ export default function App() {
                 <FlyToMap position={flyToPosition} />
                 {marker ? <Marker position={marker} icon={markerIcon} /> : null}
               </MapContainer>
-            </div>
-            {loading ? (
-              <div className="forming-panel" aria-busy="true" aria-live="polite">
-                <p className="forming-title">Отчёт формируется…</p>
-                <div className="load-bar-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(loadProgress)}>
-                  <div className="load-bar-fill" style={{ width: `${loadProgress}%` }} />
+              {loading ? (
+                <div className="forming-overlay" aria-busy="true" aria-live="polite">
+                  <div className="forming-panel">
+                    <p className="forming-title">Отчёт формируется…</p>
+                    <div
+                      className="load-bar-track"
+                      role="progressbar"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={Math.round(loadProgress)}
+                    >
+                      <div className="load-bar-fill" style={{ width: `${loadProgress}%` }} />
+                    </div>
+                    <div className="forming-phrase-slot">
+                      <p key={loadingCaption} className="forming-hint forming-hint--phrase">
+                        {loadingCaption}
+                      </p>
+                    </div>
+                    <p className="forming-hint forming-hint--sub">
+                      Страницу можно не закрывать — результат появится ниже.
+                    </p>
+                  </div>
                 </div>
-                <p key={loadingCaption} className="forming-hint forming-hint--phrase">
-                  {loadingCaption}
-                </p>
-                <p className="forming-hint forming-hint--sub">Страницу можно не закрывать — результат появится ниже.</p>
-              </div>
-            ) : null}
+              ) : null}
+            </div>
             <div className="map-footer map-footer--cols">
               <span className="map-footer-note">
                 Картография: ©{' '}

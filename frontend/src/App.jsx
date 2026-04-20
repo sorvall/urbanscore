@@ -209,6 +209,7 @@ export default function App() {
           return;
         }
         const resolvedAddress = addrPayload.data.address;
+        setAddressInput(resolvedAddress);
 
         const res = await fetch(`${API_BASE_URL}/api/v1/report`, {
           method: 'POST',
@@ -220,8 +221,10 @@ export default function App() {
           setError(payload.error || `Ошибка ${res.status}`);
           return;
         }
-        setAddress(payload.data?.address ?? resolvedAddress);
+        const finalAddr = payload.data?.address ?? resolvedAddress;
+        setAddress(finalAddr);
         setHtml(payload.data?.html ?? '');
+        setAddressInput(finalAddr);
       } catch (e) {
         setError(e?.message || 'Сеть недоступна');
       } finally {

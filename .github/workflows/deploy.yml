@@ -160,4 +160,6 @@ jobs:
             fi
 
             $COMPOSE_CMD up -d --build
+            # Caddyfile смонтирован томом: при деплое файл на диске новый, но процесс читает конфиг при старте — перезапуск применяет его.
+            $COMPOSE_CMD restart caddy
             $COMPOSE_CMD ps

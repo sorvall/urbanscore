@@ -50,4 +50,4 @@ jobs:
             -e "ssh ${SSH_OPTS}" \
             ./ "${SSH_USER}@${SSH_HOST}:${DEPLOY_PATH}/"
           ssh ${SSH_OPTS} "${SSH_USER}@${SSH_HOST}" \
-            "set -euo pipefail; cd '${DEPLOY_PATH}' && docker compose up -d --build && docker compose ps"
+            "set -euo pipefail; cd '${DEPLOY_PATH}' && docker compose up -d --build && docker compose restart caddy && docker compose ps"

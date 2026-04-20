@@ -3,6 +3,13 @@
 # Для кириллического .рф укажите ОБА: UTF-8 и punycode — иначе часть клиентов попадёт не в тот site block.
 # Пример: мосдомэксперт.рф,xn--d1acogbkbkkdep1l.xn--p1ai
 # Старый CADDY_DOMAIN подхватывается из docker-compose, если CADDY_SITE_LABELS не задан.
+{
+	# Без HTTP/3: у части клиентов (Chrome/QUIC) встречались пустые тела при 200 у reverse_proxy.
+	servers {
+		protocols h1 h2
+	}
+}
+
 {$CADDY_SITE_LABELS:localhost} {
 	encode gzip
 
@@ -16,6 +23,9 @@
 	}
 
 	handle {
-		reverse_proxy frontend:80
+		reverse_proxy frontend:80 {
+			# Стабильный Host для nginx (server_name _); IDN в Host иногда даёт пустой ответ upstream.
+			header_up Host frontend
+		}
 	}
 }

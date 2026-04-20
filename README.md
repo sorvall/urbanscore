@@ -49,6 +49,8 @@ docker compose up -d --build
 
 Локально без публичного домена по умолчанию используется `CADDY_DOMAIN=localhost` (без выдачи LE). Прямой доступ по-прежнему: порты **5173** (фронт) и **8080** (API).
 
+Долгий отчёт (`POST /api/v1/report`): nginx/Caddy ждут ответ бэкенда до **600 с** (см. `frontend/nginx.conf`, `Caddyfile`); таймаут DeepSeek настраивается **`DEEPSEEK_RESPONSE_TIMEOUT`** в `.env` / `application.yml`.
+
 **Яндекс:** добавьте сайт в [Яндекс.Вебмастер](https://webmaster.yandex.ru/), укажите `sitemap.xml` из корня сайта, при необходимости вставьте в `frontend/index.html` мета-тег подтверждения из кабинета (`<meta name="yandex-verification" content="…" />`) и пересоберите фронт.
 
 ## Локальная разработка

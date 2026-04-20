@@ -6,12 +6,19 @@ set -euo pipefail
 DOMAIN="${1:-мосдомэксперт.рф}"
 PUNY="$(python3 -c "import sys; print(sys.argv[1].encode('idna').decode('ascii'))" "$DOMAIN" 2>/dev/null || true)"
 A_REC="$(dig @8.8.8.8 +short "$DOMAIN" A | head -1 | tr -d '\r')"
+# dig по UTF-8 на части VPS не отдаёт A — повторяем по punycode
+if [[ -z "${A_REC// }" && -n "${PUNY:-}" ]]; then
+  A_REC="$(dig @8.8.8.8 +short "$PUNY" A | head -1 | tr -d '\r')"
+fi
 
 echo "== Домен: $DOMAIN =="
 echo "== DNS A (Google 8.8.8.8) =="
 echo "${A_REC:-<пусто>}"
 echo "== DNS AAAA =="
 dig @8.8.8.8 +short "$DOMAIN" AAAA || true
+if [[ -n "${PUNY:-}" ]]; then
+  dig @8.8.8.8 +short "$PUNY" AAAA || true
+fi
 if [[ -n "$PUNY" && "$PUNY" != "$DOMAIN" ]]; then
   echo "== Punycode для CADDY_SITE_LABELS (вторая часть после запятой) =="
   echo "$PUNY"

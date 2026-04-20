@@ -29,13 +29,17 @@ services:
     image: caddy:2.8-alpine
     container_name: urbanscore-caddy
     restart: unless-stopped
+    # Пустой CADDY_SITE_LABELS в .env ломает Caddyfile ({$VAR:localhost} не срабатывает для «»). Скрипт подставляет домен.
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
     ports:
       - "80:80"
       - "443:443"
     environment:
-      # Для .рф: лучше оба имени: мосдомэксперт.рф,xn--....xn--p1ai (см. Caddyfile). Иначе — fallback на CADDY_DOMAIN.
+      # Compose подставляет из .env; пустую строку донастраивает entrypoint (и CADDY_DOMAIN).
       CADDY_SITE_LABELS: ${CADDY_SITE_LABELS:-${CADDY_DOMAIN:-localhost}}
+      CADDY_DOMAIN: ${CADDY_DOMAIN:-}
     volumes:
+      - ./scripts/caddy-entrypoint.sh:/entrypoint.sh:ro
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config

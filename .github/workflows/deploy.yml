@@ -123,6 +123,15 @@ jobs:
               -exec rm -rf {} +
             tar xzf urbanscore-deploy.tgz
             rm -f urbanscore-deploy.tgz
+
+            if [ ! -f .env ]; then
+              echo "::error::.env not found in ${DEPLOY_PATH}. Create ${DEPLOY_PATH}/.env on server (see .env.example in repo)."
+              if [ -f .env.example ]; then
+                echo "::notice::You can initialize with: cp ${DEPLOY_PATH}/.env.example ${DEPLOY_PATH}/.env and fill secrets."
+              fi
+              exit 1
+            fi
+
             if ! command -v docker >/dev/null 2>&1; then
               echo "Docker not found. Installing via get.docker.com..."
               if command -v curl >/dev/null 2>&1; then

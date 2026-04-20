@@ -19,8 +19,9 @@ public class WebConfig implements WebMvcConfigurer {
         String raw = appProperties.cors() != null && appProperties.cors().allowedOrigins() != null
                 ? appProperties.cors().allowedOrigins()
                 : "*";
-        String[] origins =
+        String[] patterns =
                 Arrays.stream(raw.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toArray(String[]::new);
-        registry.addMapping("/api/**").allowedOrigins(origins).allowedMethods("*").allowedHeaders("*");
+        // allowedOriginPatterns: * — любой Origin (нужно для доступа и по домену, и по IP:порту)
+        registry.addMapping("/api/**").allowedOriginPatterns(patterns).allowedMethods("*").allowedHeaders("*");
     }
 }

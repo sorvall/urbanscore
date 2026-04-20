@@ -14,7 +14,7 @@ public record AppProperties(
     public record Cors(String allowedOrigins) {
         public Cors {
             if (allowedOrigins == null || allowedOrigins.isBlank()) {
-                allowedOrigins = "http://localhost:5173";
+                allowedOrigins = "*";
             }
         }
     }

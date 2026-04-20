@@ -35,7 +35,8 @@ deepseek:
 
 app:
   cors:
-    allowed-origins: ${APP_CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+    # По умолчанию * (любой Origin). Сузить: APP_CORS_ORIGINS=https://a.ru,http://IP:5173
+    allowed-origins: "${APP_CORS_ORIGINS:*}"
   # Временно: показывать на фронте JSON запроса к DeepSeek. В проде: APP_DEBUG_DEEPSEEK_REQUEST=false
   debug-expose-deepseek-request: ${APP_DEBUG_DEEPSEEK_REQUEST:true}
 

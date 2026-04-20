@@ -3,6 +3,13 @@ import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-lea
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { prepareReportHtml } from './prepareReportHtml.js';
+import {
+  ymReachGoal,
+  YM_GOAL_ADDRESS_CHECK_MANUAL_FAIL,
+  YM_GOAL_ADDRESS_CHECK_MANUAL_OK,
+  YM_GOAL_ADDRESS_CHECK_MAP_FAIL,
+  YM_GOAL_ADDRESS_CHECK_MAP_OK
+} from './yandexMetrika.js';
 
 /** Пустая строка = тот же origin (прокси /api на бэкенд, например Caddy). */
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
@@ -159,9 +166,11 @@ export default function App() {
         );
         const geoPayload = await geoRes.json().catch(() => ({}));
         if (!geoRes.ok || !geoPayload.success || !geoPayload.data) {
+          ymReachGoal(YM_GOAL_ADDRESS_CHECK_MANUAL_FAIL);
           setError(geoPayload.error || `Не удалось найти адрес (${geoRes.status})`);
           return;
         }
+        ymReachGoal(YM_GOAL_ADDRESS_CHECK_MANUAL_OK);
         const { address: normalized, lat, lon } = geoPayload.data;
         const pos = [lat, lon];
         setMarker(pos);
@@ -205,9 +214,11 @@ export default function App() {
         );
         const addrPayload = await addrRes.json().catch(() => ({}));
         if (!addrRes.ok || !addrPayload.success || !addrPayload.data?.address) {
+          ymReachGoal(YM_GOAL_ADDRESS_CHECK_MAP_FAIL);
           setError(addrPayload.error || `Не удалось определить адрес (${addrRes.status})`);
           return;
         }
+        ymReachGoal(YM_GOAL_ADDRESS_CHECK_MAP_OK);
         const resolvedAddress = addrPayload.data.address;
         setAddressInput(resolvedAddress);
 

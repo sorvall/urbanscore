@@ -8,6 +8,7 @@
 #
 # Опционально:
 #   SSH_PORT        — порт SSH, если не 22
+#   VITE_YM_ID      — номер Яндекс.Метрики (подставляется в сборку фронта в CI)
 #
 # На сервере один раз: установлены Docker и docker compose plugin.
 # В DEPLOY_PATH положите файл .env (не в git) с ключами DaData, DeepSeek и:
@@ -70,6 +71,9 @@ jobs:
 
       - name: Build frontend (fail fast before deploy)
         working-directory: frontend
+        env:
+          # Номер счётчика Метрики (секрет опционален; без него — без счётчика в бандле)
+          VITE_YM_ID: ${{ secrets.VITE_YM_ID }}
         run: npm ci && npm run build
 
       - name: Create deployment archive

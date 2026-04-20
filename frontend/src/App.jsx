@@ -334,7 +334,7 @@ export default function App() {
                       </p>
                     </div>
                     <p className="forming-hint forming-hint--sub">
-                      Страницу можно не закрывать — результат появится ниже.
+                      Не закрывайте страницу. Отчет появится ниже ...
                     </p>
                   </div>
                 </div>

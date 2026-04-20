@@ -24,3 +24,25 @@ services:
       - app
     ports:
       - "5173:80"
+
+  # HTTPS (Let's Encrypt): прокси на фронт и API. На сервере задайте CADDY_DOMAIN и откройте 80/443.
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: urbanscore-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      CADDY_DOMAIN: ${CADDY_DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+      - frontend
+
+volumes:
+  caddy_data:
+  caddy_config:

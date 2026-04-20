@@ -4,7 +4,8 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { prepareReportHtml } from './prepareReportHtml.js';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+/** Пустая строка = тот же origin (прокси /api на бэкенд, например Caddy). */
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
 
 const MOSCOW = [55.751244, 37.618423];
 
